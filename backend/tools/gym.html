@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Torn Stat Gain Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #f0f0f0;
+    }
+    input, select, button {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    .formula {
+      margin-top: 30px;
+      font-size: 0.9em;
+      background: #2b2b2b;
+      padding: 15px;
+      border-radius: 5px;
+      white-space: pre-wrap;
+    }
+
+    .result{
+        font-size: 1.2em;
+        margin-top: 20px;
+        background: #333;
+        padding: 10px;
+        border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Torn Stat Gain Calculator</h1>
+    <label>Stat Total (S): <input type="number" id="statTotal" value="10000"></label>
+    <label>Happy (H): <input type="number" id="happy" value="1000"></label>
+    <label>Gym Dots (G): <input type="number" id="gymDots" value="5.0" step="0.1"></label>
+    <label>Energy per Train (E): <input type="number" id="energyPerTrain" value="10"></label>
+    <label>Perk Bonus Total (%): <input type="number" id="perkBonus" value="0"></label>
+    <label>Stat Type:
+      <select id="statType">
+        <option value="strength">Strength</option>
+        <option value="speed">Speed</option>
+        <option value="dexterity">Dexterity</option>
+        <option value="defense">Defense</option>
+      </select>
+    </label>
+    <label>Random Variation:
+      <input type="range" id="randomValue" min="-1500" max="1500" value="0" step="1" oninput="updateSliderValue(this.value)">
+      <span id="randomDisplay">0</span>
+    </label>
+
+    <p id="result"></p>
+    <div class="formula" id="formulaDisplay"></div>
+  </div>
+
+  <script>
+    const inputs = document.querySelectorAll("input, select");
+    inputs.forEach(input => input.addEventListener("input", calculateGain));
+
+    function updateSliderValue(val) {
+      document.getElementById('randomDisplay').textContent = val;
+    }
+
+    function calculateGain() {
+      const S = Math.min(parseFloat(document.getElementById('statTotal').value), 50000000);
+      const H = parseFloat(document.getElementById('happy').value);
+      const G = parseFloat(document.getElementById('gymDots').value);
+      const E = parseFloat(document.getElementById('energyPerTrain').value);
+      const perkBonus = parseFloat(document.getElementById('perkBonus').value) / 100;
+      const statType = document.getElementById('statType').value;
+      const rand = parseFloat(document.getElementById('randomValue').value);
+
+      let A = 0, B = 0, C = 0;
+      switch (statType) {
+        case 'strength': A = 1600; B = 1700; C = 700; break;
+        case 'speed': A = 1600; B = 2000; C = 1350; break;
+        case 'dexterity': A = 1800; B = 1500; C = 1000; break;
+        case 'defense': A = 2100; B = -600; C = 1500; break;
+      }
+
+      const logPart = Math.log(1 + H / 250);
+      const gain = (
+        (S * (1 + 0.07 * logPart) + 8 * Math.pow(H, 1.05) + (1 - Math.pow(H / 99999, 2)) * A + B + rand)
+        / 200000
+      ) * G * E * (1 + perkBonus);
+
+      document.getElementById('result').innerText = "Estimated Stat Gain: " + gain.toFixed(2);
+
+      const formulaString = `
+Gain = [ S * (1 + 0.07 * ln(1 + H / 250)) 
+       + 8 * H^1.05 
+       + (1 - (H / 99999)^2) * A 
+       + B 
+       + Random (${rand}) ]
+       / 200000 
+       * G 
+       * E 
+       * (1 + PerkBonus)
+
+→ Gain = [ ${S} * (1 + 0.07 * ln(1 + ${H}/250)) 
+        + 8 * ${H}^1.05 
+        + (1 - (${H}/99999)^2) * ${A} 
+        + ${B} 
+        + ${rand} ] 
+        / 200000 
+        * ${G} 
+        * ${E} 
+        * (1 + ${perkBonus})
+`.trim();
+
+      document.getElementById('formulaDisplay').textContent = formulaString;
+    }
+
+    window.onload = calculateGain;
+  </script>
+</body>
+</html>
