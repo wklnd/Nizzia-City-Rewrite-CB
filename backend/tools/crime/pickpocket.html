@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nizzia City Pickpocket Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #f0f0f0;
+    }
+    input, select, button {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+    }
+    .container {
+      max-width: 600px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    .result, .formula {
+      font-size: 1em;
+      margin-top: 20px;
+      background: #2b2b2b;
+      padding: 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Nizzia City Pickpocket Calculator</h1>
+
+    <h3>Player Stats</h3>
+    <label>Strength: <input type="number" id="pStrength" value="2000"></label>
+    <label>Defense: <input type="number" id="pDefense" value="2000"></label>
+    <label>Dexterity: <input type="number" id="pDexterity" value="2000"></label>
+    <label>Speed: <input type="number" id="pSpeed" value="2000"></label>
+
+    <h3>Target Stats</h3>
+    <label>Strength: <input type="number" id="tStrength" value="500"></label>
+    <label>Defense: <input type="number" id="tDefense" value="500"></label>
+    <label>Dexterity: <input type="number" id="tDexterity" value="500"></label>
+    <label>Speed: <input type="number" id="tSpeed" value="500"></label>
+    <label>Aggression (0 to 1): <input type="number" id="tAggression" value="0.2" step="0.1" min="0" max="1"></label>
+
+    <h3>Target Status</h3>
+    <label><input type="checkbox" id="drunk"> Drunk</label>
+    <label><input type="checkbox" id="sleepy"> Sleepy</label>
+    <label><input type="checkbox" id="unfocused"> Unfocused</label>
+    <label><input type="checkbox" id="old"> Old</label>
+    <label><input type="checkbox" id="sick"> Sick</label>
+    <label><input type="checkbox" id="isPolice"> Is Police</label>
+
+    <div class="result" id="resultDisplay"></div>
+    <div class="formula" id="formulaDisplay"></div>
+  </div>
+
+  <script>
+    const inputs = document.querySelectorAll("input");
+    inputs.forEach(input => input.addEventListener("input", calculate));
+
+    function calculate() {
+      const p = {
+        str: +document.getElementById('pStrength').value,
+        def: +document.getElementById('pDefense').value,
+        dex: +document.getElementById('pDexterity').value,
+        spd: +document.getElementById('pSpeed').value
+      };
+      const t = {
+        str: +document.getElementById('tStrength').value,
+        def: +document.getElementById('tDefense').value,
+        dex: +document.getElementById('tDexterity').value,
+        spd: +document.getElementById('tSpeed').value,
+        aggression: +document.getElementById('tAggression').value
+      };
+      const status = {
+        drunk: document.getElementById('drunk').checked,
+        sleepy: document.getElementById('sleepy').checked,
+        unfocused: document.getElementById('unfocused').checked,
+        old: document.getElementById('old').checked,
+        sick: document.getElementById('sick').checked,
+        police: document.getElementById('isPolice').checked,
+      };
+
+      const playerTotal = p.dex * 0.5 + p.spd * 0.5;
+      let targetTotal = t.dex * 0.5 + t.spd * 0.5;
+
+      // Penalties for target statuses (makes them easier to pickpocket)
+      if (status.drunk) targetTotal *= 0.7;
+      if (status.sleepy) targetTotal *= 0.9;
+      if (status.unfocused) targetTotal *= 0.9;
+      if (status.old) targetTotal *= 0.95;
+      if (status.sick) targetTotal *= 0.9;
+
+      const baseChance = playerTotal / (playerTotal + targetTotal);
+      const noise = (Math.random() * 0.1) - 0.05; // -5% to +5%
+      const finalChance = Math.min(1, Math.max(0, baseChance + noise));
+
+      // Damage if caught
+      const caughtDamage = (t.str * 0.4 + t.def * 0.3 + t.spd * 0.3) * t.aggression;
+
+      let result = "";
+      if (finalChance >= 0.8) {
+        result = "✔ Success! You pickpocketed the target.";
+      } else if (finalChance < 0.5) {
+        if (status.police || Math.random() < 0.5) {
+          result = "❌ You got caught and jailed!";
+        } else {
+          result = `❌ You got caught and took ${caughtDamage.toFixed(1)} damage!`;
+        }
+      } else {
+        result = "⚠ You failed, but escaped without consequence.";
+      }
+
+      document.getElementById("resultDisplay").innerHTML = `
+        <strong>Chance of Success:</strong> ${(finalChance * 100).toFixed(2)}%<br>
+        <strong>Outcome:</strong> ${result}
+      `;
+
+      document.getElementById("formulaDisplay").textContent = `
+Base Chance = PlayerDex*0.5 + PlayerSpd*0.5 / (same + TargetDex*0.5 + TargetSpd*0.5)
+
+Modifiers: drunk ×0.7, sleepy/unfocused/sick ×0.9, old ×0.95
+Aggression determines damage if caught.
+Random variance ±5% applied.
+`.trim();
+    }
+
+    window.onload = calculate;
+  </script>
+</body>
+</html>
