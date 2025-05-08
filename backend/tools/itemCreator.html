@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Item Creator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #f0f0f0;
+      display: flex;
+      justify-content: space-between;
+    }
+    .container {
+      width: 45%;
+    }
+    input, select, textarea, button {
+      padding: 8px;
+      margin: 5px 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    h1 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    .result {
+      font-size: 1em;
+      margin-top: 20px;
+      background: #2b2b2b;
+      padding: 10px;
+      border-radius: 5px;
+    }
+    /* hide all optional fields by default */
+    .optional {
+      display: none;
+    }
+    .item-list {
+      width: 45%;
+      background: #2b2b2b;
+      padding: 20px;
+      border-radius: 5px;
+      overflow-y: auto;
+      max-height: 80vh;
+    }
+    .item-list h2 {
+      text-align: center;
+    }
+    .item {
+      margin-bottom: 15px;
+      padding: 10px;
+      background: #1e1e1e;
+      border: 1px solid #444;
+      border-radius: 5px;
+      position: relative;
+    }
+    .item p {
+      margin: 5px 0;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: red;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      text-align: center;
+      line-height: 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Item Creator</h1>
+    <form id="itemForm">
+      <!-- always-visible -->
+      <label for="name">Name:</label>
+      <input type="text" id="name" name="name" required>
+
+      <label for="type">Type:</label>
+      <select id="type" name="type" required>
+        <option value="weapon">Weapon</option>
+        <option value="armor">Armor</option>
+        <option value="medicine">Medicine</option>
+        <option value="alchool">Alcohol</option>
+        <option value="enhancers">Enhancers</option>
+        <option value="clothes">Clothes</option>
+        <option value="tools">Tools</option>
+        <option value="drugs">Drugs</option>
+        <option value="collectibles">Collectibles</option>
+      </select>
+
+      <label for="description">Description:</label>
+      <textarea id="description" name="description"></textarea>
+
+      <!-- Effects: only for drugs/alcohol/medicine/enhancers -->
+      <div class="optional" data-show-for="medicine,alchool,enhancers,drugs">
+        <label for="effect">Effect (JSON):</label>
+        <textarea id="effect" name="effect" placeholder='e.g. {"strength":10}'></textarea>
+      </div>
+      <div class="optional" data-show-for="alchool,drugs">
+        <label for="overdoseEffect">Overdose Effect (JSON):</label>
+        <textarea id="overdoseEffect" name="overdoseEffect" placeholder='e.g. {"happy":-10000}'></textarea>
+      </div>
+      <div class="optional" data-show-for="tools,collectibles">
+        <label for="passiveEffect">Passive Effect (JSON):</label>
+        <textarea id="passiveEffect" name="passiveEffect" placeholder='e.g. {"pickpocket":0.1}'></textarea>
+      </div>
+
+      <!-- type2: only for weapons, armor, clothes -->
+      <div class="optional" data-show-for="weapon,armor,clothes">
+        <label for="type2">Subtype:</label>
+        <select id="type2" name="type2">
+          <option value="">— select —</option>
+          <option value="primaryWeapon">Primary Weapon</option>
+          <option value="secondaryWeapon">Secondary Weapon</option>
+          <option value="meleeWeapon">Melee Weapon</option>
+          <option value="head">Head</option>
+          <option value="torso">Torso</option>
+          <option value="pants">Pants</option>
+          <option value="shoes">Shoes</option>
+          <option value="legs">Legs</option>
+        </select>
+      </div>
+
+      <!-- weapon-only -->
+      <div class="optional" data-show-for="weapon">
+        <label for="damage">Damage:</label>
+        <input type="number" id="damage" name="damage" min="0" value="0">
+      </div>
+
+      <!-- armor-only -->
+      <div class="optional" data-show-for="armor">
+        <label for="armor">Armor:</label>
+        <input type="number" id="armor" name="armor" min="0" value="0">
+
+        <label for="coverage">Coverage (%):</label>
+        <input type="number" id="coverage" name="coverage" min="0" max="100" value="100">
+      </div>
+
+      <!-- quality: for weapons & armor -->
+      <div class="optional" data-show-for="weapon,armor">
+        <label for="quality">Quality:</label>
+        <input type="number" id="quality" name="quality" min="0" max="100" value="0">
+      </div>
+
+      <!-- always-visible -->
+      <label for="price">Price:</label>
+      <input type="number" id="price" name="price" value="0" min="0">
+
+      <label for="sellable">Sellable:</label>
+      <select id="sellable" name="sellable">
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+
+      <label for="usable">Usable:</label>
+      <select id="usable" name="usable">
+        <option value="true">Yes</option>
+        <option value="false">No</option>
+      </select>
+
+      <button type="submit">Create Item</button>
+    </form>
+    <div class="result" id="result"></div>
+  </div>
+
+  <div class="item-list">
+    <h2>All Items</h2>
+    <div id="items"></div>
+  </div>
+
+  <script>
+    // show/hide optional fields based on data-show-for
+    function toggleFields() {
+      const selected = document.getElementById('type').value;
+      document.querySelectorAll('.optional').forEach(el => {
+        const types = el.getAttribute('data-show-for').split(',');
+        el.style.display = types.includes(selected) ? 'block' : 'none';
+      });
+    }
+
+    document.getElementById('type').addEventListener('change', toggleFields);
+    window.addEventListener('DOMContentLoaded', toggleFields);
+
+    // your existing fetchItems + form submission code...
+    const fetchItems = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/items');
+        if (!res.ok) throw new Error(res.statusText);
+        const items = await res.json();
+        const container = document.getElementById('items');
+        container.innerHTML = '';
+        items.forEach(i => {
+          const div = document.createElement('div');
+          div.className = 'item';
+          let html = `
+            <p><strong>Name:</strong> ${i.name}</p>
+            <p><strong>Type:</strong> ${i.type}</p>
+          `;
+          // include subtype if present
+          if (i.type2) html += `<p><strong>Subtype:</strong> ${i.type2}</p>`;
+          // conditional display in list
+          if (i.type === 'weapon')      html += `<p><strong>Damage:</strong> ${i.damage}</p>`;
+          if (i.type === 'armor')       html += `<p><strong>Armor:</strong> ${i.armor}</p><p><strong>Coverage:</strong> ${i.coverage}%</p>`;
+          if (['weapon','armor'].includes(i.type)) html += `<p><strong>Quality:</strong> ${i.quality}</p>`;
+          if (['medicine','alchool','enhancers','drugs'].includes(i.type)) html += `<p><strong>Effect:</strong> ${JSON.stringify(i.effect)}</p>`;
+          if (['alchool','drugs'].includes(i.type)) html += `<p><strong>Overdose:</strong> ${JSON.stringify(i.overdoseEffect)}</p>`;
+          if (['tools','collectibles'].includes(i.type)) html += `<p><strong>Passive:</strong> ${JSON.stringify(i.passiveEffect)}</p>`;
+
+          html += `
+            <p><strong>Price:</strong> ${i.price}</p>
+            <p><strong>Sellable:</strong> ${i.sellable ? 'Yes' : 'No'}</p>
+            <p><strong>Usable:</strong> ${i.usable ? 'Yes' : 'No'}</p>
+            <button class="delete-btn" data-id="${i._id}">X</button>
+          `;
+          div.innerHTML = html;
+          container.appendChild(div);
+        });
+
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', async e => {
+            const id = e.target.dataset.id;
+            await fetch(`http://localhost:5000/api/items/${id}`, { method: 'DELETE' });
+            fetchItems();
+          });
+        });
+      } catch (err) {
+        document.getElementById('items').textContent = `Error: ${err.message}`;
+      }
+    };
+
+    document.getElementById('itemForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const parseJSON = txt => txt.trim() ? JSON.parse(txt) : {};
+
+      const data = {
+        name: document.getElementById('name').value.trim(),
+        type: document.getElementById('type').value,
+        description: document.getElementById('description').value.trim(),
+        // only include if visible
+        ...(document.getElementById('effect').offsetParent && { effect: parseJSON(document.getElementById('effect').value) }),
+        ...(document.getElementById('overdoseEffect').offsetParent && { overdoseEffect: parseJSON(document.getElementById('overdoseEffect').value) }),
+        ...(document.getElementById('passiveEffect').offsetParent && { passiveEffect: parseJSON(document.getElementById('passiveEffect').value) }),
+        ...(document.getElementById('type2').offsetParent && { type2: document.getElementById('type2').value || null }),
+        ...(document.getElementById('damage').offsetParent && { damage: +document.getElementById('damage').value }),
+        ...(document.getElementById('armor').offsetParent && { armor: +document.getElementById('armor').value }),
+        ...(document.getElementById('coverage').offsetParent && { coverage: +document.getElementById('coverage').value }),
+        ...(document.getElementById('quality').offsetParent && { quality: +document.getElementById('quality').value }),
+        price: +document.getElementById('price').value,
+        sellable: document.getElementById('sellable').value === 'true',
+        usable: document.getElementById('usable').value === 'true',
+      };
+
+      try {
+        const res = await fetch('http://localhost:5000/api/items/create', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(data),
+        });
+        if (!res.ok) throw new Error(res.statusText);
+        const json = await res.json();
+        document.getElementById('result').textContent = `Created: ${JSON.stringify(json)}`;
+        fetchItems();
+      } catch (err) {
+        document.getElementById('result').textContent = `Error: ${err.message}`;
+      }
+    });
+
+    // initial load
+    fetchItems();
+  </script>
+</body>
+</html>
