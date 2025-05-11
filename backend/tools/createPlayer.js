@@ -7,11 +7,21 @@ mongoose.connect("mongodb://localhost:27017/nizziacity", { useNewUrlParser: true
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('Error connecting to MongoDB:', err));
 
+  id = Math.floor(Math.random() * 1000000).toString(); // Generate a random ID for the player
+  // Check if the ID already exists in the database
+  Player.findOne({ id: id })
+    .then(existingPlayer => {
+      if (existingPlayer) {
+        console.log('ID already exists, generating a new one...');
+        id = Math.floor(Math.random() * 1000000).toString();
+      }
+    })
+    .catch(err => console.error('Error checking ID:', err));
 // Create a new player
 const newPlayer = new Player({
-  name: 'Test Player',
+  name: 'Test Player' + id,
   gender: 'Male',
-  id: '1',
+  id: id,
   age: 0,
   level: 1,
   exp: 0,

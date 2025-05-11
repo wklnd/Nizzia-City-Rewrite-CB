@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const itemSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  id: { type: String, required: true, unique: true },
   type: { type: String, enum: ['weapon', 'armor', 'medicine', 'alchool', 'enhancers', 'clothes', 'tools', 'drugs', 'collectibles'], required: true },
   type2: { type: String, enum: ['primaryWeapon', 'secondaryWeapon', 'meleeWeapon', 'head','torso', 'pants', 'shoes', 'legs'] }, // Only for armor, clothes and weapons
   description: { type: String }, // for everything

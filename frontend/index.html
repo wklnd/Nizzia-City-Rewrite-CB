@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nizzia City</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      background: #23272a url('https://images.unsplash.com/photo-1464983953574-0892a716854b?auto=format&fit=crop&w=1500&q=80') no-repeat center center fixed;
+      background-size: cover;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #e0e0e0;
+    }
+    .overlay {
+      background: rgba(20, 20, 20, 0.85);
+      min-height: 100vh;
+      padding: 0;
+      margin: 0;
+    }
+    .header {
+      background: rgba(30, 30, 30, 0.95);
+      border-bottom: 3px solid #444;
+      padding: 30px 0 20px 0;
+      text-align: center;
+      letter-spacing: 2px;
+    }
+    .header h1 {
+      font-size: 3em;
+      margin: 0;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 2px 2px 8px #000;
+    }
+    .header p {
+      font-size: 1.2em;
+      color: #b0b0b0;
+      margin-top: 10px;
+      margin-bottom: 0;
+    }
+    .main-content {
+      max-width: 500px;
+      margin: 60px auto 0 auto;
+      background: rgba(40, 40, 40, 0.97);
+      border-radius: 8px;
+      box-shadow: 0 0 20px #000a;
+      padding: 40px 30px 30px 30px;
+      text-align: center;
+    }
+    .main-content h2 {
+      margin-top: 0;
+      color: #fff;
+      font-size: 2em;
+      letter-spacing: 1px;
+    }
+    .main-content p {
+      color: #b0b0b0;
+      margin-bottom: 30px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+      text-align: left;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      color: #ccc;
+      font-size: 1em;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #222;
+      color: #fff;
+      font-size: 1em;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(90deg, #3a3a3a 0%, #5a5a5a 100%);
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 1.1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 10px;
+    }
+    .btn:hover {
+      background: linear-gradient(90deg, #444 0%, #666 100%);
+    }
+    .links {
+      margin-top: 25px;
+      color: #aaa;
+      font-size: 0.95em;
+    }
+    .links a {
+      color: #6ab7ff;
+      text-decoration: none;
+      margin: 0 8px;
+      transition: color 0.2s;
+    }
+    .links a:hover {
+      color: #fff;
+    }
+    @media (max-width: 600px) {
+      .main-content {
+        padding: 25px 10px 20px 10px;
+      }
+      .header h1 {
+        font-size: 2em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="overlay">
+    <div class="header">
+      <h1>Nizzia City</h1>
+      <p>The Ultimate Crime RPG - Inspired by Torn City</p>
+    </div>
+    <div class="main-content">
+      <h2>Login</h2>
+      <form>
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input id="username" type="text" placeholder="Enter your username" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password" type="password" placeholder="Enter your password" autocomplete="current-password">
+        </div>
+        <button class="btn" type="submit">Login</button>
+        <button class="btn" type="button" onclick="window.location.href='#register'">Register</button>
+      </form>
+      <div class="links">
+        <a href="#">Forgot Password?</a> | 
+        <a href="#">Game Rules</a> | 
+        <a href="#">Help</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

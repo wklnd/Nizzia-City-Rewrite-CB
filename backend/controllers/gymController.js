@@ -66,4 +66,55 @@ const trainPlayer = async (req, res) => {
   }
 };
 
-module.exports = { calculateStatGain, trainPlayer };
+const addStats = async (req, res) => {
+  try {
+    const { id, statType, amount } = req.body;
+
+    // Fetch the player by the `id` field
+    const player = await Player.findOne({ id });
+    if (!player) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    // Add the specified amount to the chosen stat
+    player.battleStats[statType] = (player.battleStats[statType] || 0) + parseFloat(amount);
+
+    // Save the updated player
+    await player.save();
+
+    res.json({
+      message: `Added ${amount} to ${statType}`,
+      updatedStats: player.battleStats,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+
+const removeStats = async (req, res) => {
+  try {
+    const { id, statType, amount } = req.body;
+
+    // Fetch the player by the `id` field
+    const player = await Player.findOne({ id });
+    if (!player) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    // Remove the specified amount to the chosen stat
+    player.battleStats[statType] = Math.max(0, (player.battleStats[statType] || 0) - parseFloat(amount));
+    // Save the updated player
+    await player.save();
+
+    res.json({
+      message: `Removed ${amount} to ${statType}`,
+      updatedStats: player.battleStats,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};  
+
+
+module.exports = { calculateStatGain, trainPlayer, addStats, removeStats };

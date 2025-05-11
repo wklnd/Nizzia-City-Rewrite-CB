@@ -86,6 +86,9 @@
       <label for="name">Name:</label>
       <input type="text" id="name" name="name" required>
 
+      <label for="id">ID:</label>
+      <input type="text" id="id" name="id" required>
+
       <label for="type">Type:</label>
       <select id="type" name="type" required>
         <option value="weapon">Weapon</option>
@@ -206,6 +209,7 @@
           let html = `
             <p><strong>Name:</strong> ${i.name}</p>
             <p><strong>Type:</strong> ${i.type}</p>
+            <p><strong>ID:</strong> ${i.id}</p>
           `;
           // include subtype if present
           if (i.type2) html += `<p><strong>Subtype:</strong> ${i.type2}</p>`;
@@ -244,6 +248,7 @@
       const parseJSON = txt => txt.trim() ? JSON.parse(txt) : {};
 
       const data = {
+        id: document.getElementById('id').value.trim(), // Include the ID field
         name: document.getElementById('name').value.trim(),
         type: document.getElementById('type').value,
         description: document.getElementById('description').value.trim(),
@@ -275,6 +280,7 @@
         document.getElementById('result').textContent = `Error: ${err.message}`;
       }
     });
+
 
     // initial load
     fetchItems();

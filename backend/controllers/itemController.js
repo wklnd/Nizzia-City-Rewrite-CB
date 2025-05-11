@@ -20,6 +20,7 @@ const createItem = async (req, res) => {
   const {
     name,
     type,
+    id,
     description,
     effect,
     overdoseEffect,
@@ -39,6 +40,7 @@ const createItem = async (req, res) => {
     const payload = {
       name,
       type,
+      id,
       description,
       price,
       sellable,

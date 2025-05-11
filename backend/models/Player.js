@@ -43,6 +43,18 @@ const playerSchema = new mongoose.Schema({
     employeEfficiency: { type: Number, default: 0 },
   },
   addiction: {type: Number, default: 0 }, // This is the current value of addiction, increase with drugs
+
+  cooldowns: {
+    medicalCooldown: { type: Number, default: 0 }, // This is the current value of medical cooldown, increase with drugs
+    drugCooldown: { type: Number, default: 0 }, // This is the current value of drug cooldown, increase with drugs
+    boosterCooldown: { type: Number, default: 0 }, // This is the current value of booster cooldown, increase with drugs
+  },
+
+  job: {
+    jobId: { type: String, default: null }, 
+    jobRank: { type: Number, default: 0 }, 
+    jobPoints: { type: Number, default: 0 }, 
+  },
 });
 
 module.exports = mongoose.model('Player', playerSchema);
