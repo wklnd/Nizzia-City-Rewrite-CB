@@ -1,0 +1,13 @@
+.stock-list { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
+.stock-card { border:1px solid #ccc; border-radius:6px; padding:12px; background:#fff; cursor:pointer; }
+.stock-card:hover { border-color:#999; }
+.stock-card .name { font-weight:600; }
+.stock-card .symbol { color:#666; font-size:12px; }
+.stock-card .price { margin-top:6px; font-size:18px; }
+.stock-card .change { font-size:12px; }
+.chg-up { color:#2e7d32; }
+.chg-down { color:#c62828; }
+
+#portfolio { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px; }
+.holding { border:1px solid #ccc; border-radius:6px; padding:12px; background:#fff; }
+.holding .head { display:flex; justify-content:space-between; align-items:center; }

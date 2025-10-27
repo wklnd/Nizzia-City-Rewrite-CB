@@ -76,6 +76,15 @@ const playerSchema = new mongoose.Schema({
       item: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: true },
       qty: { type: Number, default: 1, min: 0 }
     }
+  ],
+
+  // Stock portfolio holdings
+  portfolio: [
+    {
+      symbol: { type: String, required: true },
+      shares: { type: Number, default: 0, min: 0 },
+      avgPrice: { type: Number, default: 0, min: 0 }
+    }
   ]
 });
 

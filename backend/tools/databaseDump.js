@@ -1,18 +1,24 @@
-// This file is responsible for dumping the database contents to a JSON file
-// and restoring from such a file.
+// This tool dumps the main game data to a JSON file and restores from it.
+// It also automatically writes stock price history (StockPrice collection)
+// to a separate file derived from the provided path: e.g.,
+//   dump.json -> dump.stocks.json
 
 const fs = require('fs');
+const path = require('path');
 const mongoose = require('mongoose');
 const connectDB = require('../config/db');
 const Item = require('../models/Item');
 const Player = require('../models/Player');
 const User = require('../models/User');
+const StockPrice = require('../models/StockPrice');
+
 
 async function dumpDatabase(filePath) {
     await connectDB();
     const items = await Item.find({});
     const players = await Player.find({});
     const users = await User.find({});
+    const stockPrices = await StockPrice.find({});
 
     const dump = {
         items,
@@ -21,7 +27,14 @@ async function dumpDatabase(filePath) {
     };
 
     fs.writeFileSync(filePath, JSON.stringify(dump, null, 2));
+    // Derive a separate file path for stock data automatically
+    const parsed = path.parse(filePath);
+    const baseName = parsed.name || 'dump';
+    const ext = parsed.ext && parsed.ext.length > 0 ? parsed.ext : '.json';
+    const stockFile = path.join(parsed.dir || '.', `${baseName}.stocks${ext}`);
+    fs.writeFileSync(stockFile, JSON.stringify({ stockPrices }, null, 2));
     console.log(`Database dumped to ${filePath}`);
+    console.log(`Stock data dumped to ${stockFile}`);
     process.exit(0);
 }
 

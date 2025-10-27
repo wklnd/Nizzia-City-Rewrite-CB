@@ -13,6 +13,7 @@ const scheduleRegenEnergy = require('./cronjobs/regenEnergy');
 const scheduleRegenNerve = require('./cronjobs/regenNerve');
 const scheduleJob = require('./cronjobs/jobCron');
 const scheduleRegenHappiness = require('./cronjobs/regenHappiness');
+const scheduleStockTicker = require('./cronjobs/stockTicker');
 
 const app = express();
 
@@ -37,6 +38,7 @@ if (process.env.DISABLE_CRON !== 'true') {
   scheduleRegenNerve();
   scheduleJob();
   scheduleRegenHappiness();
+  scheduleStockTicker();
 }
 
 // Start server
