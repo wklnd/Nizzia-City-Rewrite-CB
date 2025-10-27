@@ -1,0 +1,170 @@
+{
+  "items": [
+    {
+      "_id": "68ff5c2833b54ddeaf611b77",
+      "name": "Bat",
+      "id": "1",
+      "type": "weapon",
+      "type2": "meleeWeapon",
+      "description": "A wooden bat.",
+      "damage": 5,
+      "armor": 0,
+      "quality": 1,
+      "coverage": 100,
+      "price": 20,
+      "sellable": true,
+      "usable": true,
+      "__v": 0
+    }
+  ],
+  "players": [
+    {
+      "energyStats": {
+        "energy": 60,
+        "energyMax": 10000,
+        "energyMaxCap": 150,
+        "energyMin": 0
+      },
+      "nerveStats": {
+        "nerve": 20,
+        "nerveMax": 20,
+        "nerveMaxCap": 125,
+        "nerveMin": 0
+      },
+      "happiness": {
+        "happy": 150,
+        "happyMax": 150,
+        "happyMaxCap": 99999,
+        "happyMin": 0
+      },
+      "battleStats": {
+        "strength": 7609.469999999997,
+        "speed": 0,
+        "dexterity": 0,
+        "defense": 25.57
+      },
+      "workStats": {
+        "manuallabor": 0,
+        "intelligence": 0,
+        "endurance": 0,
+        "employeEfficiency": 0
+      },
+      "cooldowns": {
+        "medicalCooldown": 0,
+        "drugCooldown": 0,
+        "boosterCooldown": 0
+      },
+      "job": {
+        "jobId": null,
+        "jobRank": 0,
+        "jobPoints": 0
+      },
+      "_id": "68ff758534020991678f5ec0",
+      "user": "68ff614237e8b4727a3e101e",
+      "name": "KungNilz",
+      "id": 1,
+      "gender": "Male",
+      "age": 0,
+      "level": 1,
+      "exp": 0,
+      "money": 800980,
+      "points": 30,
+      "merits": 0,
+      "xmasCoins": 0,
+      "halloweenCoins": 0,
+      "easterCoins": 0,
+      "playerStatus": "Active",
+      "playerTitle": "DevBox 360",
+      "playerRole": "Developer",
+      "addiction": 0,
+      "__v": 2,
+      "inventory": [
+        {
+          "item": "68ff5c2833b54ddeaf611b77",
+          "qty": 1,
+          "_id": "68ffebaed8cee253b3b22631"
+        }
+      ]
+    },
+    {
+      "energyStats": {
+        "energy": 100,
+        "energyMax": 100,
+        "energyMaxCap": 150,
+        "energyMin": 0
+      },
+      "nerveStats": {
+        "nerve": 20,
+        "nerveMax": 20,
+        "nerveMaxCap": 125,
+        "nerveMin": 0
+      },
+      "happiness": {
+        "happy": 150,
+        "happyMax": 150,
+        "happyMaxCap": 99999,
+        "happyMin": 0
+      },
+      "battleStats": {
+        "strength": 21.590000000000003,
+        "speed": 0,
+        "dexterity": 0,
+        "defense": 0
+      },
+      "workStats": {
+        "manuallabor": 0,
+        "intelligence": 0,
+        "endurance": 0,
+        "employeEfficiency": 0
+      },
+      "cooldowns": {
+        "medicalCooldown": 0,
+        "drugCooldown": 0,
+        "boosterCooldown": 0
+      },
+      "job": {
+        "jobId": null,
+        "jobRank": 0,
+        "jobPoints": 0
+      },
+      "_id": "68ff79676f6494ce3a51bf89",
+      "user": "68ff795e6f6494ce3a51bf85",
+      "name": "Kent",
+      "id": 2,
+      "gender": "Male",
+      "age": 0,
+      "level": 1,
+      "exp": 0,
+      "money": 1000,
+      "points": 30,
+      "merits": 0,
+      "xmasCoins": 0,
+      "halloweenCoins": 0,
+      "easterCoins": 0,
+      "playerStatus": "Active",
+      "playerTitle": "New gun on the block",
+      "playerRole": "Player",
+      "addiction": 0,
+      "__v": 0,
+      "inventory": []
+    }
+  ],
+  "users": [
+    {
+      "_id": "68ff614237e8b4727a3e101e",
+      "name": "oscar",
+      "email": "wiklundoscar45@gmail.com",
+      "password": "$2a$10$KMSME3c3dySHueUIwY/x1.0.rNbK8PzIJNahtyFjBCo05gNlvFwAa",
+      "accountCreated": "2025-10-27T12:10:42.250Z",
+      "__v": 0
+    },
+    {
+      "_id": "68ff795e6f6494ce3a51bf85",
+      "name": "test",
+      "email": "oscar@oscar.se",
+      "password": "$2a$10$2S89sJh/m3B2OEr3KMdgv.XikCACdTxZeCY6yy7kB0QMiwX90qsMW",
+      "accountCreated": "2025-10-27T13:53:34.474Z",
+      "__v": 0
+    }
+  ]
+}

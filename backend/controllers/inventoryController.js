@@ -50,4 +50,38 @@ async function buyItem(req, res) {
   }
 }
 
+async function sellItem(req, res) {
+  try {
+    const { userId, itemId, qty } = req.body;
+    const quantity = Math.max(1, Number(qty || 1));
+    if (!userId || !itemId) return res.status(400).json({ error: 'userId and itemId are required' });
+
+    const [player, item] = await Promise.all([
+      Player.findOne({ user: userId }),
+      Item.findById(itemId)
+    ]);
+    if (!player) return res.status(404).json({ error: 'Player not found' });
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+    if (item.price == null) return res.status(400).json({ error: 'Item not for sale' });
+
+    const idx = (player.inventory || []).findIndex(e => String(e.item) === String(item._id));
+    if (idx < 0) return res.status(404).json({ error: 'Item not found in inventory' });
+
+    const total = Number(item.price) * quantity;
+    if ((player.inventory[idx].qty || 0) < quantity) return res.status(400).json({ error: 'Not enough item quantity' });
+
+    // Update inventory and add money
+    player.inventory[idx].qty = Number(player.inventory[idx].qty || 0) - quantity;
+    player.money = Number(player.money || 0) + total;
+
+    await player.save();
+
+    const populated = await Player.findById(player._id).populate('inventory.item');
+    return res.json({ money: populated.money, inventory: populated.inventory });
+  } catch (err) {
+    console.error('sellItem error:', err);
+    return res.status(500).json({ error: 'Failed to sell item' });
+  }
+}
+
 module.exports = { getInventory, buyItem };
