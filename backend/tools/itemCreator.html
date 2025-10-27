@@ -175,6 +175,7 @@
       <button type="submit">Create Item</button>
     </form>
     <div class="result" id="result"></div>
+    <button id="downloadItemsBtn" type="button" style="margin-top:10px;">Download all items (JSON)</button>
   </div>
 
   <div class="item-list">
@@ -284,6 +285,12 @@
 
     // initial load
     fetchItems();
+
+    // download all items as JSON via backend route
+    document.getElementById('downloadItemsBtn').addEventListener('click', () => {
+      // Trigger file download from backend
+      window.location.href = 'http://localhost:5000/api/items/download';
+    });
   </script>
 </body>
 </html>

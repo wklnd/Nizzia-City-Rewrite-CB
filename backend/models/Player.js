@@ -1,20 +1,34 @@
 const mongoose = require('mongoose');
 
 const playerSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
-  id: { type: String, required: true, unique: true },
+  id: { type: Number, required: true, unique: true },
   gender: { type: String, enum: ["Male", "Female", "Enby"], required: true },
   age: { type: Number, default: 0 }, // Day since registration
   level: { type: Number, default: 1 }, // Player level
   exp: { type: Number, default: 0 }, // Player experience
 
-  money: { type: Number, default: 0 }, // Player money
-  points: { type: Number, default: 0 }, // Player points
+  money: { type: Number, default: 1000 }, // Player money
+  points: { type: Number, default: 30 }, // Player points (premium currency)
+  merits : { type: Number, default: 0 }, // Player merits (earned currency)
+
+  // Seasonal currencies
+  xmasCoins: { type: Number, default: 0 },
+  halloweenCoins: { type: Number, default: 0 },
+  easterCoins: { type: Number, default: 0 },
+
+
+  playerStatus: { type: String, enum: ["Active", "Banned", "Suspended", "Abandoned"], default: "Active" },
+  playerTitle: { type: String, enum: ["New gun on the block", "Rookie", "War agent", "Alcholic", "Billionaire", "Trillionaire", "Tycoon", "Developer", "Admin", "Moderator", "DevBox 360"], default: "New gun on the block" },
+  playerRole: { type: String, enum: ["Player", "Moderator", "Admin", "Developer"], default: "Player" },
+
+
 
   energyStats: { 
     energy: { type: Number, default: 100 }, // This is the current value of energy, should be calculated based on items, homes, etc
     energyMax: { type: Number, default: 100 }, // This can increase with items, homes, etc
-    energyMaxCap: { type: Number, default: 150 }, // This can't increase.
+    energyMaxCap: { type: Number, default: 150 }, // This can't increase. Max cap only when the user buys premium
     energyMin: { type: Number, default: 0 }, // Lowest value of energy
   },
   nerveStats: {
@@ -55,6 +69,14 @@ const playerSchema = new mongoose.Schema({
     jobRank: { type: Number, default: 0 }, 
     jobPoints: { type: Number, default: 0 }, 
   },
+  
+  // Inventory: list of items with quantities
+  inventory: [
+    {
+      item: { type: mongoose.Schema.Types.ObjectId, ref: 'Item', required: true },
+      qty: { type: Number, default: 1, min: 0 }
+    }
+  ]
 });
 
 module.exports = mongoose.model('Player', playerSchema);

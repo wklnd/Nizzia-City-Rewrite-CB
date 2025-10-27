@@ -5,52 +5,82 @@
   <title>Nizzia City - Game</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="assets/style/game.css">
-  <style>
-  </style>
+  <link rel="stylesheet" href="assets/style/topbar.css">
 </head>
 <body>
+
+  <!-- Top Navbar -->
+  <div class="topbar">
+    <div class="brand">Nizzia City</div>
+    <div class="ticker">
+      <div id="news-ticker" class="ticker__track">Loading news…</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button id="btn-profile" title="Profile">Profile</button>
+      <button id="btn-logout" title="Log out">Log out</button>
+    </div>
+  </div>
 
   <div class="sidebar">
     <h2>Nizzia City</h2>
 
     <div class="info">
-      <p>Name: Kyrnulf</p>
-      <p>Money: $1,544,659</p>
-      <p>Level: 23</p>
-      <p>Points: 53</p>
+      <p id="ui-name">Name: —</p>
+      <p id="ui-money">Money: $0</p>
+      <p id="ui-level">Level: 1</p>
+      <p id="ui-points">Points: 0</p>
     </div>
 
     <div class="info">
-      <p>Energy: 30/150</p>
-      <div class="progress-bar"><div class="progress-fill energy" style="width: 20%;"></div></div>
+      <p id="ui-energy-label">Energy: 0/0</p>
+      <div class="progress-bar"><div class="progress-fill energy" id="ui-energy-bar" style="width: 0%;"></div></div>
 
-      <p>Nerve: 15/51</p>
-      <div class="progress-bar"><div class="progress-fill nerve" style="width: 29%;"></div></div>
+      <p id="ui-nerve-label">Nerve: 0/0</p>
+      <div class="progress-bar"><div class="progress-fill nerve" id="ui-nerve-bar" style="width: 0%;"></div></div>
 
-      <p>Happy: 1197/1300</p>
-      <div class="progress-bar"><div class="progress-fill happy" style="width: 92%;"></div></div>
+      <p id="ui-happy-label">Happy: 0/0</p>
+      <div class="progress-bar"><div class="progress-fill happy" id="ui-happy-bar" style="width: 0%;"></div></div>
 
-      <p>Life: 1025/1025</p>
-      <div class="progress-bar"><div class="progress-fill life" style="width: 100%;"></div></div>
-
-      <p>Chain: 0/10</p>
-      <div class="progress-bar"><div class="progress-fill chain" style="width: 0%;"></div></div>
+      <!-- Life/Chain placeholders for future -->
     </div>
 
     <ul>
-      <li><a href="#">Home</a></li>
-      <li><a href="#">Items</a></li>
-      <li><a href="#">City</a></li>
-      <li><a href="#">Job</a></li>
-      <li><a href="#">Gym</a></li>
-      <li><a href="#">Properties</a></li>
-      <li><a href="#">Education</a></li>
-      <li><a href="#">Crimes</a></li>
-      <li><a href="#">Missions</a></li>
-      <li><a href="#">Newspaper</a></li>
-      <li><a href="#">Jail</a></li>
-      <li><a href="#">Hospital</a></li>
+      <li><a href="game.html">Home</a></li>
+      <li><a href="inventory.html">Inventory</a></li>
+      <li><a href="city.html">City</a></li>
+      <li><a href="job.html">Job</a></li>
+      <li><a href="gym.html">Gym</a></li>
+      <li><a href="casino.html">Casino</a></li>
+      <li><a href="crimes.html">Crimes</a></li>
+      <li><a href="money.html">Money</a></li>
     </ul>
+
+    <div id="dev-menu" class="info u-mt-16">
+      <h3>Developer</h3>
+      <div class="u-mb-8">
+        <label>Add Money</label>
+        <div class="u-flex u-gap-6">
+          <input id="dev-money" type="number" value="100000" />
+          <button id="dev-add-money" class="btn">Add</button>
+        </div>
+      </div>
+      <div class="u-mb-8">
+        <label>Add Energy</label>
+        <div class="u-flex u-gap-6">
+          <input id="dev-energy" type="number" value="10" />
+          <button id="dev-add-energy" class="btn">Add</button>
+        </div>
+      </div>
+      <div>
+        <label>Add Nerve</label>
+        <div class="u-flex u-gap-6">
+          <input id="dev-nerve" type="number" value="5" />
+          <button id="dev-add-nerve" class="btn">Add</button>
+        </div>
+      </div>
+      <div id="dev-msg" class="u-mt-8 msg"></div>
+    </div>
   </div>
 
   <div class="main-content">
@@ -59,6 +89,10 @@
       <p>This is the main game interface. Choose an action from the sidebar to get started.</p>
     </div>
   </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/pages/game.js"></script>
 
 </body>
 </html>

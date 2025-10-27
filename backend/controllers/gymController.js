@@ -23,10 +23,19 @@ const calculateStatGain = (req, res) => {
 
 const trainPlayer = async (req, res) => {
   try {
-    const { id, happy, gymDots, energyPerTrain, perkBonus, statType, randomValue } = req.body;
+    const { id, userId, happy, gymDots, energyPerTrain, perkBonus, statType, randomValue } = req.body;
 
-    // Fetch the player by the `id` field
-    const player = await Player.findOne({ id });
+    // Build a robust query: try numeric id first; if missing or not found, try userId
+    let player = null;
+    if (typeof id !== 'undefined' && id !== null) {
+      const idNum = Number(id);
+      if (!Number.isNaN(idNum)) {
+        player = await Player.findOne({ id: idNum });
+      }
+    }
+    if (!player && userId) {
+      player = await Player.findOne({ user: userId });
+    }
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
@@ -68,10 +77,18 @@ const trainPlayer = async (req, res) => {
 
 const addStats = async (req, res) => {
   try {
-    const { id, statType, amount } = req.body;
+    const { id, userId, statType, amount } = req.body;
 
-    // Fetch the player by the `id` field
-    const player = await Player.findOne({ id });
+    let player = null;
+    if (typeof id !== 'undefined' && id !== null) {
+      const idNum = Number(id);
+      if (!Number.isNaN(idNum)) {
+        player = await Player.findOne({ id: idNum });
+      }
+    }
+    if (!player && userId) {
+      player = await Player.findOne({ user: userId });
+    }
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
@@ -94,10 +111,18 @@ const addStats = async (req, res) => {
 
 const removeStats = async (req, res) => {
   try {
-    const { id, statType, amount } = req.body;
+    const { id, userId, statType, amount } = req.body;
 
-    // Fetch the player by the `id` field
-    const player = await Player.findOne({ id });
+    let player = null;
+    if (typeof id !== 'undefined' && id !== null) {
+      const idNum = Number(id);
+      if (!Number.isNaN(idNum)) {
+        player = await Player.findOne({ id: idNum });
+      }
+    }
+    if (!player && userId) {
+      player = await Player.findOne({ user: userId });
+    }
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }

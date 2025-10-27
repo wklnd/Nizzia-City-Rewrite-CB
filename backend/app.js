@@ -1,18 +1,18 @@
 // filepath: /Users/oscar/Nizzia-City-Rewrite/backend/app.js
 const express = require('express');
 const cors = require('cors');
+require('dotenv').config();
+
 const connectDB = require('./config/db');
-const itemRoutes = require('./routes/itemRoutes');
-const crimeRoutes = require('./routes/crimeRoutes');
-const casinoRoutes = require('./routes/casinoRoutes');
-const gymRoutes = require('./routes/gymRoutes');
-const moneyRoutes = require('./routes/moneyRoutes');
-const jobRoutes = require('./routes/jobRoutes');
+const { mountRoutes } = require('./routes');
+const notFound = require('./middleware/notFound');
+const errorHandler = require('./middleware/errorHandler');
+const requestLogger = require('./middleware/requestLogger');
+
 const scheduleRegenEnergy = require('./cronjobs/regenEnergy');
 const scheduleRegenNerve = require('./cronjobs/regenNerve');
 const scheduleJob = require('./cronjobs/jobCron');
-
-require('dotenv').config();
+const scheduleRegenHappiness = require('./cronjobs/regenHappiness');
 
 const app = express();
 
@@ -22,23 +22,22 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(requestLogger());
 
 // Routes
-app.use('/api/items', itemRoutes);
-//app.use('/api/crime', crimeRoutes);
-app.use('/api/gym', gymRoutes);
+mountRoutes(app);
 
-app.use('/api/casino', casinoRoutes);
+// 404 and error handlers
+app.use(notFound);
+app.use(errorHandler);
 
-app.use('/api/money', moneyRoutes);
-
-app.use('/api/job', jobRoutes);
-
-
-// Start scheduled cron jobs
-scheduleRegenEnergy();
-scheduleRegenNerve();
-scheduleJob();
+// Start scheduled cron jobs (can disable with DISABLE_CRON=true)
+if (process.env.DISABLE_CRON !== 'true') {
+  scheduleRegenEnergy();
+  scheduleRegenNerve();
+  scheduleJob();
+  scheduleRegenHappiness();
+}
 
 // Start server
 const PORT = process.env.PORT || 5000;

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nizzia City - Casino</title>
+  <link rel="stylesheet" href="assets/style/game.css" />
+  <link rel="stylesheet" href="assets/style/topbar.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">Nizzia City</div>
+    <div class="spacer"></div>
+    <a class="link" href="game.html">Home</a>
+  </div>
+
+  <div class="sidebar">
+    <h2>Casino</h2>
+    <ul>
+      <li><a href="game.html">Home</a></li>
+      <li><a href="city.html">City</a></li>
+      <li><a href="gym.html">Gym</a></li>
+      <li><a href="inventory.html">Inventory</a></li>
+      <li><a href="casino.html" class="active">Casino</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="content-section">
+      <h2>Spin the Wheel</h2>
+      <p>Select a wheel and try your luck.</p>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <select id="wheel">
+          <option value="wheelLame">Wheel of Lame ($1,000)</option>
+          <option value="wheelMediocre">Wheel of Mediocre ($100,000)</option>
+          <option value="wheelAwesome">Wheel of Awesome ($500,000)</option>
+        </select>
+        <button id="btn-spin">Spin</button>
+      </div>
+      <div id="spin-result" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/pages/casino.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nizzia City - City</title>
+  <link rel="stylesheet" href="assets/style/game.css" />
+  <link rel="stylesheet" href="assets/style/topbar.css" />
+  <link rel="stylesheet" href="assets/style/city.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">Nizzia City</div>
+    <div style="flex:1"></div>
+    <a class="link" href="inventory.html">Inventory</a>
+  </div>
+
+  <div class="sidebar">
+    <h2>City</h2>
+    <ul>
+      <li><a href="game.html">Home</a></li>
+      <li><a href="city.html" class="active">City</a></li>
+      <li><a href="gym.html">Gym</a></li>
+      <li><a href="inventory.html">Inventory</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="content-section">
+      <h2>Shops</h2>
+      <p>Buy items from around the city.</p>
+      <div class="shop-grid">
+        <div class="card" id="shop-candy"><h3>Candy Shop</h3><div class="items"></div></div>
+        <div class="card" id="shop-weapons"><h3>Weapons</h3><div class="items"></div></div>
+        <div class="card" id="shop-bnb"><h3>Bits & Bobs</h3><div class="items"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/pages/city.js"></script>
+</body>
+</html>

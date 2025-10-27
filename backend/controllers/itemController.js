@@ -93,4 +93,10 @@ const deleteItem = async (req, res) => {
   }
 }
 
-module.exports = { getAllItems, useItem, createItem, deleteItem };
+const downloadAllItems = async () => {
+  const items = await Item.find();
+  const fs = require('fs');
+  fs.writeFileSync('all_items.json', JSON.stringify(items, null, 2));
+}
+
+module.exports = { getAllItems, useItem, createItem, deleteItem, downloadAllItems };
