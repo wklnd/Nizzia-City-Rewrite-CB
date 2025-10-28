@@ -4,6 +4,37 @@
 
   function money(n){ return Number(n||0).toLocaleString(); }
 
+  // Render the interactive city map markers
+  function renderCityMap() {
+    const container = document.getElementById('city-map');
+    if (!container || !Array.isArray(window.NC_CITY_LOCATIONS)) return;
+    const frag = document.createDocumentFragment();
+    window.NC_CITY_LOCATIONS.forEach((loc) => {
+      const btn = document.createElement('button');
+      btn.className = 'city-marker';
+      btn.style.left = loc.x + '%';
+      btn.style.top = loc.y + '%';
+      btn.setAttribute('title', loc.name + (loc.comingSoon ? ' (Coming soon)' : ''));
+      if (loc.comingSoon) btn.setAttribute('aria-disabled', 'true');
+      btn.innerHTML = `
+        <span class="icon">${loc.icon || '📍'}</span>
+        <span class="label">${loc.name}</span>
+        ${loc.comingSoon ? '<span class="badge">Soon</span>' : ''}
+      `;
+      btn.addEventListener('click', (e) => {
+        if (loc.comingSoon) { e.preventDefault(); return; }
+        if (loc.href && loc.href !== '#') {
+          window.location.href = loc.href;
+        } else if (loc.sectionId) {
+          const target = document.querySelector(loc.sectionId);
+          if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+      frag.appendChild(btn);
+    });
+    container.appendChild(frag);
+  }
+
   function renderItem(container, item, user) {
     const row = document.createElement('div');
     row.className = 'item';
@@ -37,8 +68,18 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
+    window.NC_UI?.init();
+    // Render the city map regardless of auth
+    renderCityMap();
+
     const user = await ensureAuth();
     if (!user) return;
+    // Load player to show HP in navbar
+    try {
+      const p = await window.NC_UTILS.fetchPlayerByUser(user._id);
+      window.NC_UTILS.setPlayer(p);
+      window.NC_UI?.updateHP(p);
+    } catch(_) {}
     try {
       const all = await get('/items');
       const items = (all || []).filter(i => i.sellable !== false);

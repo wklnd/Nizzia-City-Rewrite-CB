@@ -14,6 +14,7 @@ const scheduleRegenNerve = require('./cronjobs/regenNerve');
 const scheduleJob = require('./cronjobs/jobCron');
 const scheduleRegenHappiness = require('./cronjobs/regenHappiness');
 const scheduleStockTicker = require('./cronjobs/stockTicker');
+const scheduleBankApr = require('./cronjobs/bankApr');
 
 const app = express();
 
@@ -21,7 +22,28 @@ const app = express();
 connectDB();
 
 // Middleware
-app.use(cors());
+// CORS configuration: allow both localhost and 127.0.0.1 (useful across OSes)
+const allowedOrigins = [
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+];
+
+const corsOptions = {
+  origin(origin, callback) {
+    // Allow non-browser requests or same-origin (no Origin header)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  // If you later use cookies, also set credentials: true and ensure explicit origins (no *)
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+// Ensure preflight requests receive the proper CORS headers (Express 5: use '/*')
+app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(requestLogger());
 
@@ -39,10 +61,11 @@ if (process.env.DISABLE_CRON !== 'true') {
   scheduleJob();
   scheduleRegenHappiness();
   scheduleStockTicker();
+  scheduleBankApr();
 }
 
-// Start server
-const PORT = process.env.PORT || 5000;
+// Start server (use 5050 by default to avoid macOS AirPlay conflict on 5000)
+const PORT = Number(process.env.PORT) || 5050;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

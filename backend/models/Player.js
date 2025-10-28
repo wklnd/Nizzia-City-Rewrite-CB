@@ -9,6 +9,11 @@ const playerSchema = new mongoose.Schema({
   level: { type: Number, default: 1 }, // Player level
   exp: { type: Number, default: 0 }, // Player experience
 
+  crimeExp: { type: Number, default: 0 },
+  // Simple health and jail tracking for crime outcomes
+  health: { type: Number, default: 100, min: 0, max: 100 },
+  jailTime: { type: Number, default: 0 }, // seconds remaining
+
   money: { type: Number, default: 1000 }, // Player money
   points: { type: Number, default: 30 }, // Player points (premium currency)
   merits : { type: Number, default: 0 }, // Player merits (earned currency)

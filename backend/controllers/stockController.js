@@ -13,7 +13,7 @@ async function quote(req, res) {
     if (!stocksCfg[symbol]) return res.status(404).json({ error: 'Unknown symbol' });
     const last = await getLatestPrice(symbol);
     const history = await getHistory(symbol, req.query.range || '1d');
-    res.json({ symbol, name: stocksCfg[symbol].name, price: last.price, history });
+    res.json({ symbol, name: stocksCfg[symbol].name, price: last.price, history, decimals: Number.isInteger(stocksCfg[symbol].decimals) ? stocksCfg[symbol].decimals : 2 });
   } catch (e) { res.status(500).json({ error: e.message }); }
 }
 

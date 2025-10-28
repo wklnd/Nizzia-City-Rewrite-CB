@@ -15,15 +15,21 @@
     const nMax = player.nerveStats?.nerveMax ?? 0;
     const hNow = player.happiness?.happy ?? 0;
     const hMax = player.happiness?.happyMax ?? 0;
+  const hpNow = typeof player.health === 'number' ? player.health : 0;
+  const hpMax = 100;
 
     document.getElementById('ui-energy-label').textContent = `Energy: ${eNow}/${eMax}`;
     document.getElementById('ui-nerve-label').textContent = `Nerve: ${nNow}/${nMax}`;
     document.getElementById('ui-happy-label').textContent = `Happy: ${hNow}/${hMax}`;
+  const hpLabel = document.getElementById('ui-hp-label');
+  if (hpLabel) hpLabel.textContent = `HP: ${hpNow}/${hpMax}`;
 
     const pct = (cur, max) => max > 0 ? Math.min(100, Math.round(cur/max*100)) : 0;
     document.getElementById('ui-energy-bar').style.width = pct(eNow, eMax) + '%';
     document.getElementById('ui-nerve-bar').style.width = pct(nNow, nMax) + '%';
     document.getElementById('ui-happy-bar').style.width = pct(hNow, hMax) + '%';
+  const hpBar = document.getElementById('ui-hp-bar');
+  if (hpBar) hpBar.style.width = pct(hpNow, hpMax) + '%';
 
     // Toggle developer menu
     const isDev = player.playerRole === 'Developer';
@@ -32,6 +38,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize shared topbar
+    window.NC_UI?.init();
     const ctx = await ensurePlayerLoaded();
     if (!ctx) return;
     const { user } = ctx;
@@ -43,27 +51,9 @@
       setPlayer(player);
     } catch (_) {}
     renderSidebar(player);
-
-    // Topbar actions
-    const logout = () => { clearSession(); window.location.href = 'auth/login.html'; };
-    const btnLogout = document.getElementById('btn-logout');
-    if (btnLogout) btnLogout.addEventListener('click', logout);
-    const btnProfile = document.getElementById('btn-profile');
-    if (btnProfile) btnProfile.addEventListener('click', () => {
-      alert(`Player: ${player?.name || '-'}\nID: ${player?.id || '-'}\nLevel: ${player?.level || 1}`);
-    });
-
-    // News ticker
-    const news = [
-      'Welcome to Nizzia City!',
-      'Tip: Train in the gym to boost your battle stats.',
-      'City news: Mysterious benefactor drops cash in downtown district.',
-      'Pro tip: Happiness increases your gym gains!',
-      'Jobs pay out daily at 01:00 local server time.'
-    ];
-    const looped = news.concat(news).join(' — ');
-    const ticker = document.getElementById('news-ticker');
-    if (ticker) ticker.textContent = looped;
+    // Update HP in topbar and attach regen countdowns for bars
+    window.NC_UI?.updateHP(player);
+    window.NC_UI?.attachRegenCountdowns();
 
     // Developer controls
     const msg = document.getElementById('dev-msg');
@@ -75,6 +65,7 @@
         const fresh = await get(`/player/by-user/${user._id}`);
         setPlayer(fresh);
         renderSidebar(fresh);
+        window.NC_UI?.updateHP(fresh);
       } catch (_) {}
       return data;
     };

@@ -5,8 +5,14 @@
   function fmt(n){ return Number(n||0).toLocaleString(); }
 
   document.addEventListener('DOMContentLoaded', async () => {
+    window.NC_UI?.init();
     const user = await ensureAuth();
     if (!user) return;
+    try {
+      const p = await window.NC_UTILS.fetchPlayerByUser(user._id);
+      window.NC_UTILS.setPlayer(p);
+      window.NC_UI?.updateHP(p);
+    } catch(_) {}
     const bal = document.getElementById('balance');
     const msg = document.getElementById('money-msg');
     const amountEl = document.getElementById('amount');

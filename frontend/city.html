@@ -9,11 +9,7 @@
   <link rel="stylesheet" href="assets/style/city.css" />
 </head>
 <body>
-  <div class="topbar">
-    <div class="brand">Nizzia City</div>
-    <div style="flex:1"></div>
-    <a class="link" href="inventory.html">Inventory</a>
-  </div>
+  
 
   <div class="sidebar">
     <h2>City</h2>
@@ -21,12 +17,18 @@
       <li><a href="game.html">Home</a></li>
       <li><a href="city.html" class="active">City</a></li>
       <li><a href="gym.html">Gym</a></li>
+      <li><a href="bank.html">Bank</a></li>
       <li><a href="inventory.html">Inventory</a></li>
     </ul>
   </div>
 
   <div class="main-content">
     <div class="content-section">
+      <h2>City Map</h2>
+      <div id="city-map" class="city-map" aria-label="City map with locations">
+        <div class="map-canvas" role="img" aria-label="Stylized city map background"></div>
+      </div>
+
       <h2>Shops</h2>
       <p>Buy items from around the city.</p>
       <div class="shop-grid">
@@ -39,6 +41,8 @@
 
   <script src="assets/js/api.js"></script>
   <script src="assets/js/utils.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script src="assets/js/pages/city-map-data.js"></script>
   <script src="assets/js/pages/city.js"></script>
 </body>
 </html>

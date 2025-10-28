@@ -4,7 +4,7 @@
   let currentSymbol = 'NIZZ';
   let chart;
 
-  function fmt(n) { return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+  function fmt(n, maxFrac = 2) { return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: maxFrac }); }
   function signClass(v) { return v >= 0 ? 'chg-up' : 'chg-down'; }
 
   async function loadList() {
@@ -17,17 +17,19 @@
       card.innerHTML = `
         <div class="name">${s.name}</div>
         <div class="symbol">${s.symbol}</div>
-        <div class="price">$${fmt(s.price)}</div>
-        <div class="change ${signClass(s.change)}">${signClass(s.change) === 'chg-up' ? '+' : ''}${fmt(s.change)} (${fmt(s.changePct)}%)</div>
+        <div class="price">$${fmt(s.price, s.decimals || 2)}</div>
+        <div class="change ${signClass(s.change)}">${signClass(s.change) === 'chg-up' ? '+' : ''}${fmt(s.change, s.decimals || 2)} (${fmt(s.changePct, 2)}%)</div>
       `;
       card.addEventListener('click', () => selectSymbol(s.symbol));
       wrap.appendChild(card);
     });
   }
 
+  let currentDecimals = 2;
   async function drawChart(symbol, range) {
     const data = await get(`/stocks/${symbol}?range=${range}`);
-    document.getElementById('detail-title').textContent = `${data.name} (${symbol}) — $${fmt(data.price)}`;
+    currentDecimals = data.decimals || 2;
+    document.getElementById('detail-title').textContent = `${data.name} (${symbol}) — $${fmt(data.price, currentDecimals)}`;
     const labels = data.history.map(p => {
       const d = new Date(p.ts);
       const hh = String(d.getHours()).padStart(2, '0');
@@ -90,8 +92,14 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
+    window.NC_UI?.init();
     const user = await ensureAuth();
     if (!user) return;
+    try {
+      const p = await window.NC_UTILS.fetchPlayerByUser(user._id);
+      window.NC_UTILS.setPlayer(p);
+      window.NC_UI?.updateHP(p);
+    } catch(_) {}
     await loadList();
     await selectSymbol(currentSymbol);
     await loadPortfolio(user);

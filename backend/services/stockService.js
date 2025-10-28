@@ -31,13 +31,15 @@ async function nextPrice(symbol) {
   // Geometric Brownian Motion with annualized parameters
   const mu = typeof cfg.avgYieldPerYear === 'number' ? cfg.avgYieldPerYear : 0.07; // 7% default
   const sigma = typeof cfg.volatility === 'number' ? cfg.volatility : 0.2; // 20% default
+  const decimals = Number.isInteger(cfg.decimals) ? cfg.decimals : 2;
   const minutesPerYear = 365 * 24 * 60;
   const dt = 1 / minutesPerYear; // one minute step
   const drift = (mu - 0.5 * sigma * sigma) * dt;
   const diffusion = sigma * Math.sqrt(dt) * randn();
   const next = last.price * Math.exp(drift + diffusion);
-  const ret = Math.max(0.01, next);
-  return { symbol, price: Number(ret.toFixed(2)), ts: new Date(now) };
+  const minTick = Math.pow(10, -decimals);
+  const ret = Math.max(minTick, next);
+  return { symbol, price: Number(ret.toFixed(decimals)), ts: new Date(now) };
 }
 
 async function tickAll() {
@@ -58,12 +60,22 @@ async function listStocks() {
   for (const [symbol, cfg] of Object.entries(stocks)) {
     const last = await getLatestPrice(symbol);
     // compute 24h change
-    const since = new Date(Date.now() - 24*60*60*1000);
-    const first = await StockPrice.findOne({ symbol, ts: { $lte: since } }).sort({ ts: -1 }).lean();
-    const prev = first ? first.price : last.price;
-    const change = Number((last.price - prev).toFixed(2));
-    const changePct = prev ? Number(((change/prev)*100).toFixed(2)) : 0;
-    out.push({ symbol, name: cfg.name, price: last.price, change, changePct });
+    const decimals = Number.isInteger(cfg.decimals) ? cfg.decimals : 2;
+    const since24h = new Date(Date.now() - 24*60*60*1000);
+    // Try price from <= 24h ago (closest to 24h ago)
+    let prevDoc = await StockPrice.findOne({ symbol, ts: { $lte: since24h } }).sort({ ts: -1 }).lean();
+    // Fallback: try ~60 minutes ago to show movement quickly in fresh DBs
+    if (!prevDoc) {
+      const since60m = new Date(Date.now() - 60*60*1000);
+      prevDoc = await StockPrice.findOne({ symbol, ts: { $lte: since60m } }).sort({ ts: -1 }).lean();
+    }
+    // Fallback: earliest recorded point
+    if (!prevDoc) prevDoc = await StockPrice.findOne({ symbol }).sort({ ts: 1 }).lean();
+    const prev = prevDoc ? prevDoc.price : last.price;
+    const rawChange = last.price - prev;
+    const change = Number(rawChange.toFixed(decimals));
+    const changePct = prev ? Number(((rawChange/prev)*100).toFixed(2)) : 0;
+    out.push({ symbol, name: cfg.name, price: last.price, change, changePct, decimals });
   }
   return out;
 }

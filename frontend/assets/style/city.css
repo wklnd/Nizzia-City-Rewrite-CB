@@ -7,3 +7,33 @@
 .item .buy { display:flex; gap:6px; align-items:center; }
 .item .qty-input { width:70px; padding:6px; border:1px solid #ccc; border-radius:4px; }
 .btn-buy { padding:6px 10px; border-radius:4px; background:#4caf50; border:1px solid #3d8b40; color:#fff; cursor:pointer; }
+
+/* City map styles */
+.city-map { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; overflow: hidden; border: 1px solid #222; margin-bottom: 16px; background: #0e141b; }
+.city-map .map-canvas {
+	position: absolute; inset: 0;
+	background-image: url('../images/city-map.svg');
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+	/* Fallback gradient if image fails to load */
+	background-color: #0e141b;
+}
+.city-marker {
+	position: absolute; transform: translate(-50%, -100%);
+	display: inline-flex; align-items: center; gap: 6px;
+	padding: 6px 10px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.12);
+	background: rgba(20, 28, 38, 0.9); color: #e8f0ff;
+	font-size: 13px; line-height: 1; cursor: pointer; user-select: none;
+	transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+.city-marker:hover { transform: translate(-50%, -100%) scale(1.04); box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+.city-marker .icon { font-size: 16px; }
+.city-marker .label { white-space: nowrap; opacity: 0.95; }
+.city-marker[aria-disabled="true"] { opacity: 0.6; cursor: default; }
+.city-marker .badge { margin-left: 4px; font-size: 10px; padding: 2px 6px; border-radius: 10px; background:#2d3a4d; color:#b9d2ff; border: 1px solid rgba(255,255,255,0.08); }
+
+@media (max-width: 720px) {
+	.city-marker { padding: 5px 8px; font-size: 12px; }
+	.city-marker .icon { font-size: 14px; }
+}

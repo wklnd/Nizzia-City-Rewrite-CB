@@ -149,3 +149,20 @@ New/updated pages:
 Notes
 - Base API URL defaults to `http://localhost:5000/api`. You can override via `localStorage.setItem('nc_api', 'http://your-api/api')`.
 - The backend already enables CORS; open HTML files from disk or serve them statically with any simple server.
+
+### City map (frontend)
+
+The City page now features a lightweight interactive map with clickable points of interest (POIs): Gym, Casino, Crimes, Bank, Stocks, Job Center, and the three shop sections. The map is purely frontend and data-driven.
+
+- Location config: `frontend/assets/js/pages/city-map-data.js`
+	- Each entry has `{ id, name, icon, x, y, href?, sectionId?, comingSoon? }`
+	- `x`/`y` are percentages for placement within the map container.
+	- Use `href` to navigate to another page or `sectionId` (e.g., `#shop-candy`) to scroll to an on-page section.
+	- Set `comingSoon: true` to render a disabled marker with a "Soon" badge.
+
+- Markup and scripts:
+	- Map container is added in `frontend/city.html` as `#city-map`
+	- Styles in `frontend/assets/style/city.css`
+	- Rendering logic lives in `frontend/assets/js/pages/city.js`
+
+To add a new POI, append a new object to `window.NC_CITY_LOCATIONS` in `city-map-data.js`. Keep coordinates within the 0–100 range.

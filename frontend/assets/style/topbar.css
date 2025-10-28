@@ -25,6 +25,17 @@
 }
 .topbar button:hover { background: #4a4a4a; }
 
+/* stat pill (HP) */
+.stat-pill {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #263b2a;
+  border: 1px solid #335a3b;
+  color: #a3d977;
+  font-size: 12px;
+}
+
 .ticker { overflow: hidden; white-space: nowrap; max-width: 50vw; border-left: 1px solid #444; border-right: 1px solid #444; padding: 4px 8px; }
 .ticker__track { display: inline-block; padding-left: 100%; animation: ticker-move 25s linear infinite; }
 @keyframes ticker-move { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }

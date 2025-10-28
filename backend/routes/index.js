@@ -11,6 +11,7 @@ const jobRoutes = require('./jobRoutes');
 const devRoutes = require('./devRoutes');
 const inventoryRoutes = require('./inventoryRoutes');
 const stockRoutes = require('./stockRoutes');
+const bankRoutes = require('./bankRoutes');
 
 function mountRoutes(app) {
   app.use('/api/items', itemRoutes);
@@ -25,6 +26,7 @@ function mountRoutes(app) {
   app.use('/api/dev', devRoutes);
   app.use('/api/inventory', inventoryRoutes);
   app.use('/api/stocks', stockRoutes);
+  app.use('/api/bank', bankRoutes);
 }
 
 module.exports = { mountRoutes };

@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Nizzia City - Gym</title>
   <link rel="stylesheet" href="assets/style/game.css" />
+  <link rel="stylesheet" href="assets/style/topbar.css" />
   <link rel="stylesheet" href="assets/style/gym.css" />
 </head>
 <body>
+  
   <div class="sidebar">
     <h2>Nizzia City</h2>
 
@@ -27,6 +29,9 @@
 
       <p id="ui-happy-label">Happy: 0/0</p>
       <div class="progress-bar"><div class="progress-fill happy" id="ui-happy-bar" style="width: 0%;"></div></div>
+      
+  <p id="ui-hp-label">HP: 0/0</p>
+  <div class="progress-bar"><div class="progress-fill life" id="ui-hp-bar" style="width: 0%;"></div></div>
     </div>
 
     <ul>
@@ -65,7 +70,7 @@
         </div>
         <div class="card">
           <label for="energy">Energy per train</label>
-          <input type="number" id="energy" min="1" max="100" step="1" value="10" />
+          <input type="number" id="energy" min="1" max="100000" step="1" value="100" />
           <div class="muted">Your energy: <span id="energy-now">0</span></div>
         </div>
         <div class="card">
@@ -84,6 +89,7 @@
 
   <script src="assets/js/api.js"></script>
   <script src="assets/js/utils.js"></script>
+  <script src="assets/js/ui.js"></script>
   <script src="assets/js/pages/gym.js"></script>
 </body>
 </html>

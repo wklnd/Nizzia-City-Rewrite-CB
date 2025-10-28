@@ -3,8 +3,14 @@
   const { ensureAuth } = window.NC_UTILS;
 
   document.addEventListener('DOMContentLoaded', async () => {
+    window.NC_UI?.init();
     const user = await ensureAuth();
     if (!user) return;
+    try {
+      const p = await window.NC_UTILS.fetchPlayerByUser(user._id);
+      window.NC_UTILS.setPlayer(p);
+      window.NC_UI?.updateHP(p);
+    } catch(_) {}
     const select = document.getElementById('wheel');
     const result = document.getElementById('spin-result');
     document.getElementById('btn-spin').addEventListener('click', async () => {

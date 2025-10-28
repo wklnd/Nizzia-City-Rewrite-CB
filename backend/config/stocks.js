@@ -10,7 +10,8 @@ module.exports = {
     description: 'High-growth tech-leaning company with moderate volatility.',
     initialPrice: 1000,
     avgYieldPerYear: 0.12,
-    volatility: 0.35
+    volatility: 0.35,
+    decimals: 2,
   },
   CUCO: {
     symbol: 'CUCO',
@@ -18,14 +19,35 @@ module.exports = {
     description: 'Stable local utilities company with modest growth.',
     initialPrice: 150,
     avgYieldPerYear: 0.05,
-    volatility: 0.10
+    volatility: 0.10,
+    decimals: 2
   },
-    FRIK: {
+  FRIK: {
     symbol: 'FRIK',
     name: 'Freenuk International Kilo',
     description: 'Something something something.',
     initialPrice: 1,
+    avgYieldPerYear: 0.25,
+    volatility: 4.90,
+    decimals: 4
+  },
+  NSI: {
+    symbol: 'NSI',
+    name: 'Nizzia Space Industries',
+    description: 'Something something something.',
+    initialPrice: 10000,
+    avgYieldPerYear: 0.15,
+    volatility: 1.0,
+    decimals: 2
+  },
+  FLY: {
+    symbol: 'PLPL',
+    name: 'Plain Planes',
+    description: 'Something something something.',
+    initialPrice: 230,
     avgYieldPerYear: 0.05,
-    volatility: 0.90
+    volatility: 0.4,
+    decimals: 2
   }
+
 };

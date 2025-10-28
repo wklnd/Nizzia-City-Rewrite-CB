@@ -9,9 +9,11 @@
   }
 
   document.addEventListener('DOMContentLoaded', async () => {
+    window.NC_UI?.init();
     const ctx = await ensurePlayerLoaded();
     if (!ctx) return;
     let { user, player } = ctx;
+    window.NC_UI?.updateHP(player);
     const info = document.getElementById('job-info');
     const msg = document.getElementById('job-msg');
     const refresh = async () => {
