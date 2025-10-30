@@ -6,11 +6,11 @@
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
-const connectDB = require('../config/db');
-const Item = require('../models/Item');
-const Player = require('../models/Player');
-const User = require('../models/User');
-const StockPrice = require('../models/StockPrice');
+const connectDB = require('../../config/db');
+const Item = require('../../models/Item');
+const Player = require('../../models/Player');
+const User = require('../../models/User');
+const StockPrice = require('../../models/StockPrice');
 
 
 async function dumpDatabase(filePath) {

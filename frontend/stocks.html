@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="assets/style/topbar.css" />
   <link rel="stylesheet" href="assets/style/stocks.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
 </head>
 <body>
   
@@ -25,12 +26,28 @@
   <div class="main-content">
     <div class="content-section">
       <h2>Market Overview</h2>
-      <div id="stock-list" class="stock-list"></div>
+      <div class="u-flex u-gap-8 u-mb-8">
+        <input id="stock-filter" placeholder="Filter by symbol or name…" />
+      </div>
+      <div class="table-wrap">
+        <table class="table" id="stock-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Name</th>
+              <th class="u-text-right">Price</th>
+              <th class="u-text-right">Change</th>
+              <th class="u-text-right">% 24h</th>
+            </tr>
+          </thead>
+          <tbody id="stock-table-body"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="content-section">
       <h2 id="detail-title">Details</h2>
-      <div class="u-flex u-gap-8 u-mb-8">
+      <div class="u-flex u-gap-8 u-mb-8 u-align-center">
         <select id="range">
           <option value="1d">1d</option>
           <option value="7d">7d</option>
@@ -41,7 +58,9 @@
         <button id="btn-buy">Buy</button>
         <button id="btn-sell">Sell</button>
       </div>
-      <canvas id="chart" height="120"></canvas>
+      <div id="chartWrap" style="position:relative; height:260px;">
+        <canvas id="chart"></canvas>
+      </div>
       <div id="trade-msg" class="u-mt-8"></div>
     </div>
 

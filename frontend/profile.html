@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nizzia City - Profile</title>
+  <link rel="stylesheet" href="assets/style/game.css" />
+  <link rel="stylesheet" href="assets/style/topbar.css" />
+  <link rel="stylesheet" href="assets/style/profile.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Profile</h2>
+    <ul>
+      <li><a href="game.html">Home</a></li>
+      <li><a href="city.html">City</a></li>
+      <li><a href="hall-of-fame.html">Hall of Fame</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="content-section">
+      <h2 id="profile-title">Profile</h2>
+      <div id="profile-header" class="card u-p-12 u-mb-12 profile-header"></div>
+    </div>
+
+    <div class="content-section">
+      <h2>Growth</h2>
+      <div class="card u-p-12 u-mb-12">
+        <canvas id="profile-growth-chart" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="content-section">
+      <h2>Vitals</h2>
+      <div id="profile-vitals" class="card u-p-12 u-mb-12"></div>
+    </div>
+
+    <div class="content-section">
+      <h2>Battle Stats</h2>
+      <div id="profile-battle" class="card u-p-12 u-mb-12"></div>
+    </div>
+
+    <div class="content-section">
+      <h2>Work Stats</h2>
+      <div id="profile-work" class="card u-p-12 u-mb-12"></div>
+    </div>
+
+    <div class="content-section">
+      <h2>Finances</h2>
+      <div id="profile-finances" class="card u-p-12 u-mb-12"></div>
+      <h3>Portfolio</h3>
+      <div id="profile-portfolio" class="card u-p-12"></div>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script src="assets/js/pages/profile.js"></script>
+</body>
+</html>

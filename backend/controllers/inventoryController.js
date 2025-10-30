@@ -1,5 +1,6 @@
 const Player = require('../models/Player');
 const Item = require('../models/Item');
+const mongoose = require('mongoose');
 
 // GET /api/inventory/:userId
 async function getInventory(req, res) {
@@ -85,3 +86,56 @@ async function sellItem(req, res) {
 }
 
 module.exports = { getInventory, buyItem };
+ 
+// POST /api/inventory/use { userId, itemId, qty? }
+async function useItemFromInventory(req, res) {
+  try {
+    const { userId, itemId } = req.body;
+    const quantity = Math.max(1, Number(req.body?.qty || 1));
+    if (!userId || !itemId) return res.status(400).json({ error: 'userId and itemId are required' });
+
+    // Resolve player by user id
+    const player = await Player.findOne({ user: userId });
+    if (!player) return res.status(404).json({ error: 'Player not found' });
+
+    // Resolve item by Mongo _id or custom id
+    let item = null;
+    if (mongoose.Types.ObjectId.isValid(itemId)) item = await Item.findById(itemId);
+    if (!item) item = await Item.findOne({ id: String(itemId) });
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+
+    // Find inventory entry
+    const inv = player.inventory || [];
+    const idx = inv.findIndex(e => String(e.item) === String(item._id));
+    if (idx < 0 || Number(inv[idx].qty || 0) < quantity) {
+      return res.status(400).json({ error: 'Not enough quantity in inventory' });
+    }
+
+    // Apply item effects first; if it throws, do not consume
+    const itemService = require('../services/itemService');
+    let applyRes;
+    try {
+      applyRes = await itemService.applyItem(userId, item._id);
+    } catch (err) {
+      if (err && err.code === 'COOLDOWN') {
+        return res.status(429).json({ error: 'Cooldown active', type: err.type, remaining: err.remaining });
+      }
+      throw err;
+    }
+
+    // Consume from inventory
+    inv[idx].qty = Number(inv[idx].qty || 0) - quantity;
+    if (inv[idx].qty <= 0) inv.splice(idx, 1);
+    player.inventory = inv;
+    await player.save();
+
+    // Return updated inventory and effect result
+    const populated = await Player.findById(player._id).populate('inventory.item');
+    return res.json({ ...applyRes, inventory: populated.inventory });
+  } catch (err) {
+    console.error('useItemFromInventory error:', err);
+    return res.status(500).json({ error: 'Failed to use item' });
+  }
+}
+
+module.exports.useItemFromInventory = useItemFromInventory;

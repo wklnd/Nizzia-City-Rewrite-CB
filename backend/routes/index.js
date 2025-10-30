@@ -12,6 +12,8 @@ const devRoutes = require('./devRoutes');
 const inventoryRoutes = require('./inventoryRoutes');
 const stockRoutes = require('./stockRoutes');
 const bankRoutes = require('./bankRoutes');
+const hofRoutes = require('./hofRoutes');
+const adminRoutes = require('./adminRoutes');
 
 function mountRoutes(app) {
   app.use('/api/items', itemRoutes);
@@ -27,6 +29,8 @@ function mountRoutes(app) {
   app.use('/api/inventory', inventoryRoutes);
   app.use('/api/stocks', stockRoutes);
   app.use('/api/bank', bankRoutes);
+  app.use('/api/hof', hofRoutes);
+  app.use('/api/admin', adminRoutes);
 }
 
 module.exports = { mountRoutes };

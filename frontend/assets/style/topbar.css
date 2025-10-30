@@ -46,13 +46,29 @@
 
 /* utility */
 .u-flex { display:flex; }
+.u-justify-between { justify-content: space-between; }
+.u-align-center { align-items: center; }
 .u-gap-6 { gap:6px; }
 .u-gap-8 { gap:8px; }
 .u-col { flex-direction: column; }
+.u-gap-12 { gap:12px; }
 .u-w-100 { width:100%; }
 .u-mt-8 { margin-top:8px; }
 .u-mb-8 { margin-bottom:8px; }
+.u-mb-6 { margin-bottom:6px; }
+.u-mb-12 { margin-bottom:12px; }
 .u-mt-16 { margin-top:16px; }
+.u-p-8 { padding:8px; }
+.u-p-12 { padding:12px; }
+
+/* simple card */
+.card {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.card:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
 
 /* dev menu */
 #dev-menu { display:none; }

@@ -7,57 +7,116 @@
   function fmt(n, maxFrac = 2) { return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: maxFrac }); }
   function signClass(v) { return v >= 0 ? 'chg-up' : 'chg-down'; }
 
+  let allStocks = [];
   async function loadList() {
-    const list = await get('/stocks');
-    const wrap = document.getElementById('stock-list');
-    wrap.innerHTML = '';
-    list.forEach(s => {
-      const card = document.createElement('div');
-      card.className = 'stock-card';
-      card.innerHTML = `
-        <div class="name">${s.name}</div>
-        <div class="symbol">${s.symbol}</div>
-        <div class="price">$${fmt(s.price, s.decimals || 2)}</div>
-        <div class="change ${signClass(s.change)}">${signClass(s.change) === 'chg-up' ? '+' : ''}${fmt(s.change, s.decimals || 2)} (${fmt(s.changePct, 2)}%)</div>
+    allStocks = await get('/stocks');
+    renderTable();
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('stock-table-body');
+    const filter = (document.getElementById('stock-filter')?.value || '').trim().toLowerCase();
+    tbody.innerHTML = '';
+    let rows = allStocks;
+    if (filter) {
+      rows = rows.filter(s => s.symbol.toLowerCase().includes(filter) || (s.name||'').toLowerCase().includes(filter));
+    }
+    // Sort by absolute % change desc to surface movers
+    rows = rows.slice().sort((a,b) => Math.abs(b.changePct||0) - Math.abs(a.changePct||0));
+    rows.forEach(s => {
+      const tr = document.createElement('tr');
+      if (s.symbol === currentSymbol) tr.classList.add('selected');
+      tr.innerHTML = `
+        <td>${s.symbol}</td>
+        <td>${s.name}</td>
+        <td class="u-text-right">$${fmt(s.price, s.decimals || 2)}</td>
+        <td class="u-text-right ${signClass(s.change)}">${s.change>=0?'+':''}${fmt(s.change, s.decimals || 2)}</td>
+        <td class="u-text-right ${signClass(s.changePct)}">${s.changePct>=0?'+':''}${fmt(s.changePct, 2)}%</td>
       `;
-      card.addEventListener('click', () => selectSymbol(s.symbol));
-      wrap.appendChild(card);
+      tr.addEventListener('click', async () => {
+        currentSymbol = s.symbol;
+        renderTable();
+        await selectSymbol(s.symbol);
+      });
+      tbody.appendChild(tr);
     });
   }
 
   let currentDecimals = 2;
+  function timeUnitFor(range){
+    switch(range){
+      case '1d': return 'hour';
+      case '7d': return 'day';
+      case '30d': return 'day';
+      case '90d': return 'week';
+      default: return 'day';
+    }
+  }
+
   async function drawChart(symbol, range) {
     const data = await get(`/stocks/${symbol}?range=${range}`);
     currentDecimals = data.decimals || 2;
     document.getElementById('detail-title').textContent = `${data.name} (${symbol}) — $${fmt(data.price, currentDecimals)}`;
-    const labels = data.history.map(p => {
-      const d = new Date(p.ts);
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mm = String(d.getMinutes()).padStart(2, '0');
-      const m = d.getMonth()+1, day = d.getDate();
-      // compact label: M/D HH:MM
-      return `${m}/${day} ${hh}:${mm}`;
-    });
-    const prices = data.history.map(p => p.price);
+    // Build a clean, sorted series and guard against undefined points
+    const series = (data.history||[])
+      .map(p => ({ x: new Date(p.ts), y: Number(p.price) }))
+      .filter(pt => pt.x instanceof Date && !isNaN(pt.x) && Number.isFinite(pt.y))
+      .sort((a,b) => a.x - b.x);
     const ctx = document.getElementById('chart').getContext('2d');
     if (chart) chart.destroy();
+    if (!series.length) {
+      // Nothing to plot yet; leave the canvas empty without initializing Chart.js
+      return;
+    }
     chart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels,
         datasets: [{
           label: symbol,
-          data: prices,
-          fill: false,
-          borderColor: '#4caf50',
-          tension: 0.1,
-          pointRadius: 0
+          data: series,
+          borderColor: '#2563eb',
+          borderWidth: 2,
+          tension: 0.2,
+          pointRadius: 0,
         }]
       },
       options: {
         responsive: true,
-        scales: { y: { beginAtZero: false } },
-        plugins: { legend: { display: false } }
+        maintainAspectRatio: false,
+        animation: { duration: 150 },
+        normalized: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            mode: 'index', intersect: false,
+            callbacks: {
+              label(ctx){
+                const v = ctx.parsed.y;
+                return ` $${fmt(v, currentDecimals)}`;
+              },
+              title(items){
+                if (!items || !items.length) return '';
+                const d = items[0].parsed.x;
+                try { return new Date(d).toLocaleString(); } catch { return ''; }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: { unit: timeUnitFor(range) },
+            grid: { color: 'rgba(0,0,0,0.04)' },
+            ticks: { maxTicksLimit: 7 }
+          },
+          y: {
+            beginAtZero: false,
+            grid: { color: 'rgba(0,0,0,0.06)' },
+            ticks: {
+              callback: (v) => `$${fmt(v, currentDecimals)}`
+            }
+          }
+        }
       }
     });
   }
@@ -105,6 +164,8 @@
     await loadPortfolio(user);
 
     document.getElementById('range').addEventListener('change', () => drawChart(currentSymbol, document.getElementById('range').value));
+    const filterInput = document.getElementById('stock-filter');
+    if (filterInput) filterInput.addEventListener('input', renderTable);
     const msg = document.getElementById('trade-msg');
     const buySell = async (path) => {
       msg.textContent = '';

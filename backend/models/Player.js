@@ -4,14 +4,28 @@ const playerSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
   id: { type: Number, required: true, unique: true },
-  gender: { type: String, enum: ["Male", "Female", "Enby"], required: true },
+  // Allow common synonyms to avoid validation failures on older records
+  gender: { type: String, enum: ["Male", "Female", "Enby", "Man", "Woman", "Non-binary", "Nonbinary", "NB"], required: true },
   age: { type: Number, default: 0 }, // Day since registration
   level: { type: Number, default: 1 }, // Player level
   exp: { type: Number, default: 0 }, // Player experience
+  npc : { type: Boolean, default: false }, // Is this player an NPC
 
-  crimeExp: { type: Number, default: 0 },
+  crimeExp: { type: Number, default: 0 }, // Experience earned from crimes
+  crimesCommitted: { type: Number, default: 0 }, // Total crimes committed
+  crimesSuccessful: { type: Number, default: 0 }, // Successful crimes
+  crimesCriticalFails: { type: Number, default: 0 }, // Critical fails
+  crimesFails: { type: Number, default: 0 }, // Failed crimes
+
+  crimesXpList: [
+    {
+      crimeId: { type: String, required: true },
+      exp: { type: Number, default: 0 }
+    }
+  ],
+
   // Simple health and jail tracking for crime outcomes
-  health: { type: Number, default: 100, min: 0, max: 100 },
+  health: { type: Number, default: 100, min: 0, max: 9999 },
   jailTime: { type: Number, default: 0 }, // seconds remaining
 
   money: { type: Number, default: 1000 }, // Player money

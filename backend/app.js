@@ -14,6 +14,9 @@ const scheduleRegenNerve = require('./cronjobs/regenNerve');
 const scheduleJob = require('./cronjobs/jobCron');
 const scheduleRegenHappiness = require('./cronjobs/regenHappiness');
 const scheduleStockTicker = require('./cronjobs/stockTicker');
+const scheduleRegenCooldowns = require('./cronjobs/regenCooldowns');
+const scheduleNpcActions = require('./cronjobs/npcActions');
+const schedulePlayerSnapshots = require('./cronjobs/playerSnapshot');
 const scheduleBankApr = require('./cronjobs/bankApr');
 
 const app = express();
@@ -62,6 +65,9 @@ if (process.env.DISABLE_CRON !== 'true') {
   scheduleRegenHappiness();
   scheduleStockTicker();
   scheduleBankApr();
+  scheduleNpcActions();
+  schedulePlayerSnapshots();
+  scheduleRegenCooldowns();
 }
 
 // Start server (use 5050 by default to avoid macOS AirPlay conflict on 5000)

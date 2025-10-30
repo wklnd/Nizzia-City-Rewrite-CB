@@ -107,8 +107,45 @@
 
       <!-- Effects: only for drugs/alcohol/medicine/enhancers -->
       <div class="optional" data-show-for="medicine,alchool,enhancers,drugs">
+        <label>Effect Builder</label>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:8px;align-items:end;">
+          <div>
+            <label>Energy Δ</label>
+            <input type="number" id="eb-energy" placeholder="e.g. 250" />
+          </div>
+          <div>
+            <label>Nerve Δ</label>
+            <input type="number" id="eb-nerve" placeholder="e.g. 5" />
+          </div>
+          <div>
+            <label>Happy Δ</label>
+            <input type="number" id="eb-happy" placeholder="e.g. 1000" />
+          </div>
+          <div>
+            <label>Addiction Δ</label>
+            <input type="number" id="eb-addiction" placeholder="e.g. 5" />
+          </div>
+          <div>
+            <label>Cooldown type</label>
+            <select id="eb-cooldown-type">
+              <option value="">none</option>
+              <option value="drug">drug</option>
+              <option value="booster">booster</option>
+              <option value="medical">medical</option>
+            </select>
+          </div>
+          <div>
+            <label>Cooldown (sec)</label>
+            <input type="number" id="eb-cooldown" placeholder="e.g. 3600" />
+          </div>
+        </div>
+        <div style="margin:8px 0; display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" id="preset-xanax">Preset: Xanax (+250 energy, drug cooldown)</button>
+          <button type="button" id="preset-energy250">Preset: Energy +250</button>
+          <button type="button" id="preset-boosterSmall">Preset: Booster (+50 energy, +500 happy)</button>
+        </div>
         <label for="effect">Effect (JSON):</label>
-        <textarea id="effect" name="effect" placeholder='e.g. {"strength":10}'></textarea>
+        <textarea id="effect" name="effect" placeholder='{"energy":250,"cooldownType":"drug","cooldownSeconds":3600}'></textarea>
       </div>
       <div class="optional" data-show-for="alchool,drugs">
         <label for="overdoseEffect">Overdose Effect (JSON):</label>
@@ -197,9 +234,10 @@
     window.addEventListener('DOMContentLoaded', toggleFields);
 
     // your existing fetchItems + form submission code...
+    const API = 'http://localhost:5050/api/items';
     const fetchItems = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/items');
+        const res = await fetch(API);
         if (!res.ok) throw new Error(res.statusText);
         const items = await res.json();
         const container = document.getElementById('items');
@@ -235,7 +273,7 @@
         document.querySelectorAll('.delete-btn').forEach(btn => {
           btn.addEventListener('click', async e => {
             const id = e.target.dataset.id;
-            await fetch(`http://localhost:5000/api/items/${id}`, { method: 'DELETE' });
+            await fetch(`${API}/${id}`, { method: 'DELETE' });
             fetchItems();
           });
         });
@@ -243,6 +281,81 @@
         document.getElementById('items').textContent = `Error: ${err.message}`;
       }
     };
+
+    function buildEffectFromUI(){
+      const eff = {};
+      const en = Number(document.getElementById('eb-energy').value || '');
+      const nv = Number(document.getElementById('eb-nerve').value || '');
+      const hp = Number(document.getElementById('eb-happy').value || '');
+      const ad = Number(document.getElementById('eb-addiction').value || '');
+      const ct = document.getElementById('eb-cooldown-type').value;
+      const cs = Number(document.getElementById('eb-cooldown').value || '');
+      if (Number.isFinite(en) && en !== 0) eff.energy = en;
+      if (Number.isFinite(nv) && nv !== 0) eff.nerve = nv;
+      if (Number.isFinite(hp) && hp !== 0) eff.happy = hp;
+      if (Number.isFinite(ad) && ad !== 0) eff.addiction = ad;
+      if (ct) eff.cooldownType = ct;
+      if (Number.isFinite(cs) && cs > 0) eff.cooldownSeconds = cs;
+      return eff;
+    }
+
+    function applyEffectBuilderToTextarea(){
+      const eff = buildEffectFromUI();
+      const el = document.getElementById('effect');
+      el.value = Object.keys(eff).length ? JSON.stringify(eff) : '';
+    }
+
+    function loadEffectBuilderFromTextarea(){
+      const txt = document.getElementById('effect').value.trim();
+      if (!txt) return;
+      try {
+        const eff = JSON.parse(txt);
+        document.getElementById('eb-energy').value = eff.energy ?? '';
+        document.getElementById('eb-nerve').value = eff.nerve ?? '';
+        document.getElementById('eb-happy').value = eff.happy ?? '';
+        document.getElementById('eb-addiction').value = eff.addiction ?? '';
+        document.getElementById('eb-cooldown-type').value = eff.cooldownType ?? '';
+        document.getElementById('eb-cooldown').value = eff.cooldownSeconds ?? '';
+      } catch(_) {}
+    }
+
+    function attachEffectBuilderEvents(){
+      ['eb-energy','eb-nerve','eb-happy','eb-addiction','eb-cooldown','eb-cooldown-type'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyEffectBuilderToTextarea);
+        document.getElementById(id).addEventListener('change', applyEffectBuilderToTextarea);
+      });
+      document.getElementById('effect').addEventListener('input', loadEffectBuilderFromTextarea);
+      // Presets
+      document.getElementById('preset-xanax').addEventListener('click', () => {
+        document.getElementById('type').value = 'drugs'; toggleFields();
+        document.getElementById('eb-energy').value = 250;
+        document.getElementById('eb-nerve').value = '';
+        document.getElementById('eb-happy').value = '';
+        document.getElementById('eb-addiction').value = 10;
+        document.getElementById('eb-cooldown-type').value = 'drug';
+        document.getElementById('eb-cooldown').value = 3600;
+        applyEffectBuilderToTextarea();
+      });
+      document.getElementById('preset-energy250').addEventListener('click', () => {
+        document.getElementById('eb-energy').value = 250;
+        document.getElementById('eb-nerve').value = '';
+        document.getElementById('eb-happy').value = '';
+        document.getElementById('eb-addiction').value = '';
+        document.getElementById('eb-cooldown-type').value = '';
+        document.getElementById('eb-cooldown').value = '';
+        applyEffectBuilderToTextarea();
+      });
+      document.getElementById('preset-boosterSmall').addEventListener('click', () => {
+        document.getElementById('type').value = 'enhancers'; toggleFields();
+        document.getElementById('eb-energy').value = 50;
+        document.getElementById('eb-nerve').value = '';
+        document.getElementById('eb-happy').value = 500;
+        document.getElementById('eb-addiction').value = '';
+        document.getElementById('eb-cooldown-type').value = 'booster';
+        document.getElementById('eb-cooldown').value = 1800;
+        applyEffectBuilderToTextarea();
+      });
+    }
 
     document.getElementById('itemForm').addEventListener('submit', async e => {
       e.preventDefault();
@@ -268,7 +381,7 @@
       };
 
       try {
-        const res = await fetch('http://localhost:5000/api/items/create', {
+        const res = await fetch(`${API}/create`, {
           method: 'POST',
           headers: {'Content-Type':'application/json'},
           body: JSON.stringify(data),
@@ -284,12 +397,13 @@
 
 
     // initial load
-    fetchItems();
+  fetchItems();
+  attachEffectBuilderEvents();
 
     // download all items as JSON via backend route
     document.getElementById('downloadItemsBtn').addEventListener('click', () => {
       // Trigger file download from backend
-      window.location.href = 'http://localhost:5000/api/items/download';
+      window.location.href = `${API}/download`;
     });
   </script>
 </body>

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Console</title>
+    <link rel="stylesheet" href="assets/style/topbar.css" />
+    <link rel="stylesheet" href="assets/style/game.css" />
+    <style>
+      .admin-container { max-width: 1100px; margin: 24px auto; padding: 16px; }
+      .admin-card { background: #fff; border: 1px solid #e6e6e8; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+      .admin-card h2 { font-size: 18px; margin: 0 0 12px; }
+      .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+      label { font-size: 12px; color: #555; display: block; margin-bottom: 4px; }
+      input, select { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px; }
+      button { padding: 8px 12px; background: #2563eb; color:#fff; border:none; border-radius: 8px; cursor: pointer; }
+      button.secondary { background: #6b7280; }
+      .actions { display:flex; gap:8px; flex-wrap: wrap; }
+      .list { margin-top: 8px; border-top: 1px dashed #ddd; padding-top: 8px; font-size: 14px; }
+      .muted { color:#6b7280; font-size: 12px; }
+      .inline { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; }
+      .pill { padding: 2px 8px; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:999px; font-size:12px; }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="left u-align-center u-gap-12">
+          <a href="index.html" class="brand">Nizzia City</a>
+          <span class="pill">Admin</span>
+        </div>
+      </div>
+    </div>
+    <main class="admin-container">
+      <div class="admin-card">
+        <h2>Target</h2>
+        <div class="row">
+          <div>
+            <label>Admin userId</label>
+            <input id="adminUserId" placeholder="Your admin player userId" />
+          </div>
+          <div>
+            <label>Target player id</label>
+            <input id="targetPlayerId" placeholder="Numeric Player.id (e.g. 748)" />
+          </div>
+        </div>
+        <div class="actions" style="margin-top:10px">
+          <button id="loadPlayer">Load Player</button>
+          <button id="saveIds">Save IDs</button>
+          <span class="muted">We auto resolve userId from player id. Saved in localStorage.</span>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div>
+            <label>Target userId (auto)</label>
+            <input id="targetUserId" placeholder="Will be auto-filled after Load" readonly />
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div style="grid-column: 1 / -1">
+            <label>Optional: Search by name, numeric ID, or user ObjectId</label>
+            <div class="inline">
+              <input id="searchQuery" placeholder="e.g. Oscar, 123, or 64f09..." />
+              <button id="searchBtn">Search</button>
+            </div>
+            <div id="searchResults" class="list"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card" id="profileCard" style="display:none;">
+        <h2>Player Profile</h2>
+        <div id="profileSummary" class="list"></div>
+      </div>
+
+      <div class="admin-card">
+        <h2>Currencies</h2>
+        <div class="row">
+          <div><label>Money Δ</label><input id="moneyDelta" type="number" placeholder="e.g. 50000 or -2500" /></div>
+          <div><label>Points Δ</label><input id="pointsDelta" type="number" /></div>
+          <div><label>Merits Δ</label><input id="meritsDelta" type="number" /></div>
+          <div><label>Xmas Δ</label><input id="xmasDelta" type="number" /></div>
+          <div><label>Halloween Δ</label><input id="halloweenDelta" type="number" /></div>
+          <div><label>Easter Δ</label><input id="easterDelta" type="number" /></div>
+        </div>
+        <div class="actions" style="margin-top:10px"><button id="applyCurrency">Apply</button></div>
+      </div>
+
+      <div class="admin-card">
+        <h2>XP & Level</h2>
+        <div class="inline">
+          <div>
+            <label>Exp Δ</label>
+            <input id="expDelta" type="number" />
+          </div>
+          <button id="applyExp">Apply Exp</button>
+          <div>
+            <label>Level</label>
+            <input id="levelSet" type="number" min="1" />
+          </div>
+          <button id="applyLevel">Set Level</button>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h2>Resources</h2>
+        <div class="row">
+          <div><label>Energy Δ</label><input id="energyDelta" type="number" /></div>
+          <div><label>Nerve Δ</label><input id="nerveDelta" type="number" /></div>
+          <div><label>Happy Δ</label><input id="happyDelta" type="number" /></div>
+        </div>
+        <div class="actions" style="margin-top:10px"><button id="applyResources">Apply</button></div>
+      </div>
+
+      <div class="admin-card">
+        <h2>General (bulk)</h2>
+        <div class="row">
+          <div style="grid-column: 1 / -1" class="muted">Danger zone: applies to many players at once. Filter includes only human players by default (excludes NPCs).</div>
+          <div class="inline" style="grid-column: 1 / -1">
+            <div>
+              <label>Include NPCs</label>
+              <select id="generalIncludeNPC"><option value="false">false</option><option value="true">true</option></select>
+            </div>
+            <button id="generalEnergyMax">Set energy = max for all</button>
+          </div>
+          <div class="inline" style="grid-column: 1 / -1">
+            <div>
+              <label>Money amount (Δ)</label>
+              <input id="generalMoneyAmount" type="number" placeholder="e.g. 10000 or -500" />
+            </div>
+            <button id="generalGiveMoney">Give money to all</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h2>Inventory</h2>
+        <div class="inline">
+          <div><label>Item ID</label><input id="invItemId" placeholder="Item.id or Mongo _id" /></div>
+          <div><label>Qty</label><input id="invQty" type="number" value="1" min="1" /></div>
+          <button id="invAdd">Add</button>
+          <button id="invRemove" class="secondary">Remove</button>
+        </div>
+        <div class="list" id="invStatus"></div>
+      </div>
+
+      <div class="admin-card">
+        <h2>Create Item (minimal)</h2>
+        <div class="row">
+          <div><label>Name</label><input id="itemName" /></div>
+          <div><label>Type</label>
+            <select id="itemType">
+              <option value="tools">tools</option>
+              <option value="weapon">weapon</option>
+              <option value="armor">armor</option>
+              <option value="medicine">medicine</option>
+              <option value="drugs">drugs</option>
+              <option value="collectibles">collectibles</option>
+            </select>
+          </div>
+          <div><label>Item id (int)</label><input id="itemIdInt" type="number" /></div>
+          <div><label>Price</label><input id="itemPrice" type="number" /></div>
+          <div><label>Sellable</label>
+            <select id="itemSellable"><option value="true">true</option><option value="false">false</option></select>
+          </div>
+          <div><label>Usable</label>
+            <select id="itemUsable"><option value="true">true</option><option value="false">false</option></select>
+          </div>
+          <div style="grid-column: 1 / -1"><label>Description</label><input id="itemDesc" /></div>
+        </div>
+        <div class="actions" style="margin-top:10px"><button id="createItem">Create Item</button></div>
+        <div class="list" id="createItemStatus"></div>
+      </div>
+
+      <div class="admin-card">
+        <h2>Stocks</h2>
+        <div class="inline">
+          <div><label>Symbol</label><input id="stockSymbol" placeholder="e.g. FLY" /></div>
+          <div><label>Shares</label><input id="stockShares" type="number" value="1" min="1" /></div>
+          <div><label>Avg Price (optional)</label><input id="stockAvgPrice" type="number" step="0.0001" /></div>
+          <button id="stockAdd">Add</button>
+          <button id="stockRemove" class="secondary">Remove</button>
+          <button id="stockCrash" class="secondary" title="Decrease stocks by 40-90% (optionally only specified symbol)">Crash</button>
+          <button id="stockRocket" title="Increase stocks by 40-130% (optionally only specified symbol)">Rocket</button>
+        </div>
+      </div>
+
+      <div class="admin-card">
+        <h2>Bank Accounts</h2>
+        <div class="actions">
+          <button id="loadAccounts">Load Accounts</button>
+        </div>
+        <div class="list" id="bankList"></div>
+      </div>
+    </main>
+
+    <script src="assets/js/api.js"></script>
+    <script type="module" src="assets/js/pages/admin.js"></script>
+  </body>
+  </html>

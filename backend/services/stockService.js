@@ -1,5 +1,6 @@
 const stocks = require('../config/stocks');
 const StockPrice = require('../models/StockPrice');
+const StockEvent = require('../models/StockEvent');
 
 // Helpers
 function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
@@ -38,7 +39,19 @@ async function nextPrice(symbol) {
   const diffusion = sigma * Math.sqrt(dt) * randn();
   const next = last.price * Math.exp(drift + diffusion);
   const minTick = Math.pow(10, -decimals);
-  const ret = Math.max(minTick, next);
+  let ret = Math.max(minTick, next);
+
+  // Apply reversion toward baseline price if there is an active crash event
+  const ev = await StockEvent.findOne({ symbol, type: 'crash', resolved: false }).sort({ createdAt: -1 }).lean();
+  if (ev && typeof ev.baselinePrice === 'number') {
+    const alpha = 0.03; // 3% pull toward baseline per minute
+    ret = ret + alpha * (ev.baselinePrice - ret);
+    // If price recovers close to baseline, mark event as resolved
+    if (Math.abs(ret - ev.baselinePrice) / ev.baselinePrice < 0.02) {
+      try { await StockEvent.updateOne({ _id: ev._id }, { $set: { resolved: true } }); } catch(_) {}
+    }
+  }
+
   return { symbol, price: Number(ret.toFixed(decimals)), ts: new Date(now) };
 }
 
@@ -89,3 +102,65 @@ async function getHistory(symbol, range = '1d') {
 }
 
 module.exports = { getLatestPrice, nextPrice, tickAll, listStocks, getHistory };
+ 
+// Backfill historical prices for visualizing longer ranges without waiting in real time.
+// Generates GBM samples from (now - days) to the earliest existing point (or now if none),
+// with a given step in minutes. Avoids overlapping existing data.
+async function backfillHistory({ symbols = null, days = 90, stepMinutes = 15 } = {}) {
+  const minutesPerYear = 365 * 24 * 60;
+  const step = Math.max(1, Number(stepMinutes || 15));
+  const maxDays = Math.min(365, Math.max(1, Number(days || 90)));
+  const since = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000);
+  const syms = Array.isArray(symbols) && symbols.length ? symbols : Object.keys(stocks);
+
+  const results = [];
+  for (const symbol of syms) {
+    const cfg = stocks[symbol];
+    if (!cfg) continue;
+    const decimals = Number.isInteger(cfg.decimals) ? cfg.decimals : 2;
+    const minTick = Math.pow(10, -decimals);
+    const mu = typeof cfg.avgYieldPerYear === 'number' ? cfg.avgYieldPerYear : 0.07;
+    const sigma = typeof cfg.volatility === 'number' ? cfg.volatility : 0.2;
+    const dt = step / minutesPerYear;
+
+    // Determine generation window: [start, end)
+    const earliest = await StockPrice.findOne({ symbol }).sort({ ts: 1 }).lean();
+    const endTs = earliest ? new Date(earliest.ts) : new Date();
+    if (endTs <= since) { results.push({ symbol, inserted: 0 }); continue; }
+    const startTs = since;
+
+    let p = cfg.initialPrice || 100; // starting price for earliest synthetic point
+    const docs = [];
+    for (let t = new Date(startTs); t < endTs; t = new Date(t.getTime() + step * 60 * 1000)) {
+      // GBM step
+      const drift = (mu - 0.5 * sigma * sigma) * dt;
+      const diffusion = sigma * Math.sqrt(dt) * randn();
+      p = Math.max(minTick, p * Math.exp(drift + diffusion));
+      docs.push({ symbol, price: Number(p.toFixed(decimals)), ts: new Date(t) });
+    }
+    // Snap last synthetic point to earliest real price for continuity (if any and exists synthetic data)
+    if (earliest && docs.length) {
+      const lastIdx = docs.length - 1;
+      // Ensure ts is strictly before earliest.ts to avoid duplication
+      if (docs[lastIdx].ts < endTs) {
+        docs[lastIdx].price = earliest.price;
+      }
+    }
+    if (docs.length) {
+      // Insert in chunks to avoid memory spikes
+      const chunkSize = 2000;
+      let inserted = 0;
+      for (let i = 0; i < docs.length; i += chunkSize) {
+        const chunk = docs.slice(i, i + chunkSize);
+        await StockPrice.insertMany(chunk, { ordered: false });
+        inserted += chunk.length;
+      }
+      results.push({ symbol, inserted });
+    } else {
+      results.push({ symbol, inserted: 0 });
+    }
+  }
+  return { since, stepMinutes: step, results };
+}
+
+module.exports.backfillHistory = backfillHistory;

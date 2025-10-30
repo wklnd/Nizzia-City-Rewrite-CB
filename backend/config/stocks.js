@@ -10,7 +10,7 @@ module.exports = {
     description: 'High-growth tech-leaning company with moderate volatility.',
     initialPrice: 1000,
     avgYieldPerYear: 0.12,
-    volatility: 0.35,
+    volatility: 1.35,
     decimals: 2,
   },
   CUCO: {
@@ -18,8 +18,8 @@ module.exports = {
     name: 'City Utilities Co.',
     description: 'Stable local utilities company with modest growth.',
     initialPrice: 150,
-    avgYieldPerYear: 0.05,
-    volatility: 0.10,
+    avgYieldPerYear: 0.15,
+    volatility: 4.90,
     decimals: 2
   },
   FRIK: {
@@ -37,7 +37,7 @@ module.exports = {
     description: 'Something something something.',
     initialPrice: 10000,
     avgYieldPerYear: 0.15,
-    volatility: 1.0,
+    volatility: 4.90,
     decimals: 2
   },
   FLY: {
@@ -46,7 +46,7 @@ module.exports = {
     description: 'Something something something.',
     initialPrice: 230,
     avgYieldPerYear: 0.05,
-    volatility: 0.4,
+    volatility: 4.90,
     decimals: 2
   }
 

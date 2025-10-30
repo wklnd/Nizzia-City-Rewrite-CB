@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node backend/app.js",
     "dev": "nodemon backend/app.js",
+    "stocks:backfill": "node backend/tools/stocks/backfill.js",
     "lint": "eslint .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -14,18 +15,19 @@
   "description": "",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "chalk": "^5.6.2",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.14.2",
-    "node-cron": "^3.0.3",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "node-cron": "^3.0.3"
   },
   "devDependencies": {
     "eslint": "^9.14.0",
     "eslint-config-prettier": "^9.1.0",
-    "prettier": "^3.3.3",
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.7",
+    "prettier": "^3.3.3"
   }
 }

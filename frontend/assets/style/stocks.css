@@ -1,13 +1,20 @@
-.stock-list { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:12px; }
-.stock-card { border:1px solid #ccc; border-radius:6px; padding:12px; background:#fff; cursor:pointer; }
-.stock-card:hover { border-color:#999; }
-.stock-card .name { font-weight:600; }
-.stock-card .symbol { color:#666; font-size:12px; }
-.stock-card .price { margin-top:6px; font-size:18px; }
-.stock-card .change { font-size:12px; }
-.chg-up { color:#2e7d32; }
-.chg-down { color:#c62828; }
+/* Market table */
+.table-wrap { overflow:auto; background:#fff; border:1px solid #e5e7eb; border-radius:8px; }
+.table { width:100%; border-collapse: collapse; font-size:14px; }
+.table th, .table td { padding:10px 12px; border-bottom:1px solid #f0f1f3; }
+.table thead th { text-align:left; font-weight:600; color:#374151; background:#f9fafb; position:sticky; top:0; }
+.table tbody tr { cursor:pointer; }
+.table tbody tr:hover { background:#fafafa; }
+.table tbody tr.selected { background:#eef2ff; }
+.u-text-right { text-align:right; }
+.badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid transparent; }
+.chg-up { color:#065f46; }
+.chg-down { color:#b91c1c; }
 
 #portfolio { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px; }
 .holding { border:1px solid #ccc; border-radius:6px; padding:12px; background:#fff; }
 .holding .head { display:flex; justify-content:space-between; align-items:center; }
+
+/* Ensure chart sizes correctly inside flex containers */
+#chartWrap { position: relative; height: 260px; }
+#chart { display: block; width: 100% !important; height: 100% !important; }

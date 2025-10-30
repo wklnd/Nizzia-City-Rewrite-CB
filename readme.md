@@ -166,3 +166,23 @@ The City page now features a lightweight interactive map with clickable points o
 	- Rendering logic lives in `frontend/assets/js/pages/city.js`
 
 To add a new POI, append a new object to `window.NC_CITY_LOCATIONS` in `city-map-data.js`. Keep coordinates within the 0–100 range.
+
+
+# TODO
+
+
+## Player
+- Add Profile pictures. 
+- Add Friends / Enemy
+
+## Crimes
+- Fix crimes...
+
+## Profile 
+- Hide stats. 
+- Add profile image
+
+## Code
+- Fix code
+- Remove unused code
+- Update the frontend to vite or similiar. 
