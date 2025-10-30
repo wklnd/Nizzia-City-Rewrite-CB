@@ -66,8 +66,7 @@ function schedulePlayerSnapshots(){
     console.log('[cron] Player snapshots tick (hourly)');
     await takeSnapshot().catch(e => console.error('Snapshot error:', e.message));
   });
-  // Warm-up snapshot shortly after start
-  setTimeout(() => takeSnapshot().catch(()=>{}), 7000);
+  // Removed warm-up snapshot to avoid startup memory spike on large datasets
 }
 
 module.exports = schedulePlayerSnapshots;

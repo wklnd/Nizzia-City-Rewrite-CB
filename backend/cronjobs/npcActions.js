@@ -1,5 +1,38 @@
 // NPC automated actions: periodic stock trades and bank investments
 const cron = require('node-cron');
+
+// --- Safe Chalk Import (Works with v4 and v5) ---
+let chalk = null;
+try {
+    const mod = require('chalk');
+    chalk = mod && mod.default ? mod.default : mod;
+} catch (_) {
+    // Fallback no-color shim
+    const id = (x) => x;
+    chalk = {
+        blue: id, blueBright: id, green: id, yellow: id,
+        magenta: id, gray: id, bold: { red: id }
+    };
+}
+
+// --- Safe color helpers ---
+const color = {
+    blue: (s) => (chalk && typeof chalk.blue === 'function' ? chalk.blue(s) : s),
+    blueBright: (s) => (
+        chalk && typeof chalk.blueBright === 'function'
+            ? chalk.blueBright(s)
+            : (chalk && typeof chalk.blue === 'function' ? chalk.blue(s) : s)
+    ),
+    green: (s) => (chalk && typeof chalk.green === 'function' ? chalk.green(s) : s),
+    yellow: (s) => (chalk && typeof chalk.yellow === 'function' ? chalk.yellow(s) : s),
+    magenta: (s) => (chalk && typeof chalk.magenta === 'function' ? chalk.magenta(s) : s),
+    gray: (s) => (
+        chalk && typeof chalk.gray === 'function'
+            ? chalk.gray(s)
+            : (chalk && typeof chalk.grey === 'function' ? chalk.grey(s) : s)
+    ),
+};
+
 const Player = require('../models/Player');
 const BankAccount = require('../models/Bank');
 const stocksCfg = require('../config/stocks');
@@ -7,115 +40,122 @@ const { getLatestPrice } = require('../services/stockService');
 const { getCurrentRates, getEndDate, calculatePayout } = require('../services/bankService');
 const gymService = require('../services/gymService');
 
-function choice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
-
-async function handleStocks(player){
-  try {
-    const symbols = Object.keys(stocksCfg);
-    // Price map for affordability and valuation
-    const prices = {};
-    for (const s of symbols) {
-      try { const p = await getLatestPrice(s); prices[s] = Number(p?.price || 0); } catch { prices[s] = 0; }
-    }
-
-    const cash = Number(player.money || 0);
-  // Spend more cash to accelerate growth
-  const minSpend = 100;
-  const hasHoldings = Array.isArray(player.portfolio) && player.portfolio.length > 0;
-  // If no holdings, invest aggressively (35–70% of cash). Otherwise 20–40% per tick.
-  const budgetFrac = hasHoldings ? (0.20 + Math.random()*0.20) : (0.35 + Math.random()*0.35);
-  const budget = Math.max(minSpend, cash * budgetFrac);
-    
-
-    // 1) SELL RULES: take profit or stop loss
-    if (hasHoldings) {
-      // Evaluate each holding's gain percentage
-      let bestSell = null; // { idx, symbol, price, qty, proceeds, reason }
-  // Prefer selling winners. Rarely cut deep losers.
-  const targetGain = 0.03 + Math.random()*0.12; // 3–15% take-profit
-  const stopLoss   = 0.25 + Math.random()*0.15; // 25–40% stop-loss (rare)
-      for (let i=0; i<player.portfolio.length; i++) {
-        const h = player.portfolio[i];
-        const price = prices[h.symbol] || 0;
-        if (!price || !h.shares) continue;
-        const gainPct = h.avgPrice > 0 ? (price - h.avgPrice) / h.avgPrice : 0;
-        let shouldSell = false; let reason = '';
-        if (gainPct >= targetGain) { shouldSell = true; reason = `take-profit ${(gainPct*100).toFixed(1)}%`; }
-        else if (gainPct <= -stopLoss) { shouldSell = true; reason = `stop-loss ${(gainPct*100).toFixed(1)}%`; }
-        if (shouldSell) {
-          // Sell a larger fraction when profits are bigger
-          let frac;
-          if (gainPct >= 0.30) frac = 0.70 + Math.random()*0.30; // 70–100%
-          else if (gainPct >= 0.10) frac = 0.40 + Math.random()*0.35; // 40–75%
-          else frac = 0.30 + Math.random()*0.30; // 30–60%
-          const qty = Math.max(1, Math.floor(h.shares * frac));
-          const proceeds = Number((qty * price).toFixed(2));
-          if (!bestSell || proceeds > bestSell.proceeds) {
-            bestSell = { idx:i, symbol:h.symbol, price, qty, proceeds, reason };
-          }
-        }
-      }
-
-      // Rarely cut deep losers to free capital (15% chance if no take-profit candidate)
-      if (!bestSell && Math.random() < 0.15) {
-        for (let i=0; i<player.portfolio.length; i++) {
-          const h = player.portfolio[i];
-          const price = prices[h.symbol] || 0;
-          if (!price || !h.shares) continue;
-          const gainPct = h.avgPrice > 0 ? (price - h.avgPrice) / h.avgPrice : 0;
-          if (gainPct <= -stopLoss) {
-            const frac = 0.30 + Math.random()*0.30; // 30–60%
-            const qty = Math.max(1, Math.floor(h.shares * frac));
-            const proceeds = Number((qty * price).toFixed(2));
-            bestSell = { idx:i, symbol:h.symbol, price, qty, proceeds, reason: `deep-stop ${(gainPct*100).toFixed(1)}%` };
-            break;
-          }
-        }
-      }
-
-      if (bestSell) {
-        const h = player.portfolio[bestSell.idx];
-        h.shares = Number((h.shares - bestSell.qty).toFixed(8));
-        if (h.shares <= 0) player.portfolio.splice(bestSell.idx, 1);
-        player.money = Number(((player.money || 0) + bestSell.proceeds).toFixed(2));
-        if (typeof player.markModified === 'function') player.markModified('portfolio');
-        console.log(`[npc] ${player.name} sell ${bestSell.qty} ${bestSell.symbol} @ $${bestSell.price} (+$${bestSell.proceeds}) via ${bestSell.reason}`);
-        return 'sell';
-      }
-    }
-
-    // 2) BUY RULES: prefer affordable symbols; if none, take cheapest
-    const affordable = symbols.filter(s => prices[s] > 0 && prices[s] <= budget);
-    const cheapest = symbols.slice().sort((a,b)=> (prices[a]||Infinity) - (prices[b]||Infinity))[0];
-    const sym = (affordable.length ? choice(affordable) : cheapest) || choice(symbols);
-    const price = prices[sym] || 0;
-    if (!price) { console.log(`[npc] ${player.name} skip buy (no price for ${sym})`); return 'skip'; }
-    const spend = clamp(budget, 0, cash);
-    const shares = Math.max(1, Math.floor(spend / price));
-    if (shares <= 0) { console.log(`[npc] ${player.name} skip buy (shares<=0 for ${sym})`); return 'skip'; }
-    const cost = Number((shares * price).toFixed(2));
-    if ((player.money || 0) < cost) { console.log(`[npc] ${player.name} skip buy (insufficient funds needs $${cost})`); return 'skip'; }
-
-    const idx = (player.portfolio || []).findIndex(h => h.symbol === sym);
-    if (idx >= 0) {
-      const h = player.portfolio[idx];
-      const newShares = Number(h.shares || 0) + shares;
-      const newAvg = newShares > 0 ? Number(((h.avgPrice * h.shares + cost) / newShares).toFixed(4)) : price;
-      h.shares = newShares; h.avgPrice = newAvg;
-    } else {
-      player.portfolio = player.portfolio || [];
-      player.portfolio.push({ symbol: sym, shares, avgPrice: price });
-    }
-    player.money = Number(((player.money || 0) - cost).toFixed(2));
-    if (typeof player.markModified === 'function') player.markModified('portfolio');
-    console.log(`[npc] ${player.name} buy ${shares} ${sym} @ $${price} (spent $${cost})`);
-    return 'buy';
-  } catch (e) {
-    console.error('NPC stocks handler error:', e.message);
-    return 'error';
-  }
+// --- Utility functions ---
+function choice(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+function fmtMoney(n) {
+    return Number(n || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
 }
+
+// --- Core NPC handlers (unchanged) ---
+async function handleStocks(player, prices) {
+    try {
+        const symbols = Object.keys(stocksCfg);
+        const cash = Number(player.money || 0);
+        const minSpend = 100;
+        const hasHoldings = Array.isArray(player.portfolio) && player.portfolio.length > 0;
+        const budgetFrac = hasHoldings ? (0.20 + Math.random() * 0.20) : (0.35 + Math.random() * 0.35);
+        const budget = Math.max(minSpend, cash * budgetFrac);
+
+        // SELL rules
+        if (hasHoldings) {
+            let bestSell = null;
+            const targetGain = 0.03 + Math.random() * 0.12;
+            const stopLoss = 0.25 + Math.random() * 0.15;
+
+            for (let i = 0; i < player.portfolio.length; i++) {
+                const h = player.portfolio[i];
+                const price = prices[h.symbol] || 0;
+                if (!price || !h.shares) continue;
+
+                const gainPct = h.avgPrice > 0 ? (price - h.avgPrice) / h.avgPrice : 0;
+                let shouldSell = false, reason = '';
+
+                if (gainPct >= targetGain) {
+                    shouldSell = true; reason = `take-profit ${(gainPct * 100).toFixed(1)}%`;
+                } else if (gainPct <= -stopLoss) {
+                    shouldSell = true; reason = `stop-loss ${(gainPct * 100).toFixed(1)}%`;
+                }
+
+                if (shouldSell) {
+                    let frac;
+                    if (gainPct >= 0.30) frac = 0.70 + Math.random() * 0.30;
+                    else if (gainPct >= 0.10) frac = 0.40 + Math.random() * 0.35;
+                    else frac = 0.30 + Math.random() * 0.30;
+
+                    const qty = Math.max(1, Math.floor(h.shares * frac));
+                    const proceeds = Number((qty * price).toFixed(2));
+                    if (!bestSell || proceeds > bestSell.proceeds) {
+                        bestSell = { idx: i, symbol: h.symbol, price, qty, proceeds, reason };
+                    }
+                }
+            }
+
+            if (!bestSell && Math.random() < 0.15) {
+                for (let i = 0; i < player.portfolio.length; i++) {
+                    const h = player.portfolio[i];
+                    const price = prices[h.symbol] || 0;
+                    if (!price || !h.shares) continue;
+                    const gainPct = h.avgPrice > 0 ? (price - h.avgPrice) / h.avgPrice : 0;
+                    if (gainPct <= -stopLoss) {
+                        const frac = 0.30 + Math.random() * 0.30;
+                        const qty = Math.max(1, Math.floor(h.shares * frac));
+                        const proceeds = Number((qty * price).toFixed(2));
+                        bestSell = { idx: i, symbol: h.symbol, price, qty, proceeds, reason: `deep-stop ${(gainPct * 100).toFixed(1)}%` };
+                        break;
+                    }
+                }
+            }
+
+            if (bestSell) {
+                const h = player.portfolio[bestSell.idx];
+                h.shares = Number((h.shares - bestSell.qty).toFixed(8));
+                if (h.shares <= 0) player.portfolio.splice(bestSell.idx, 1);
+                player.money = Number(((player.money || 0) + bestSell.proceeds).toFixed(2));
+                if (typeof player.markModified === 'function') player.markModified('portfolio');
+                return { action: 'sell', qty: bestSell.qty, value: bestSell.proceeds, symbol: bestSell.symbol };
+            }
+        }
+
+        // BUY rules
+        const affordable = symbols.filter(s => prices[s] > 0 && prices[s] <= budget);
+        const cheapest = symbols.slice().sort((a, b) => (prices[a] || Infinity) - (prices[b] || Infinity))[0];
+        const sym = (affordable.length ? choice(affordable) : cheapest) || choice(symbols);
+        const price = prices[sym] || 0;
+        if (!price) return { action: 'skip' };
+
+        const spend = clamp(budget, 0, cash);
+        const shares = Math.max(1, Math.floor(spend / price));
+        if (shares <= 0) return { action: 'skip' };
+
+        const cost = Number((shares * price).toFixed(2));
+        if ((player.money || 0) < cost) return { action: 'skip' };
+
+        const idx = (player.portfolio || []).findIndex(h => h.symbol === sym);
+        if (idx >= 0) {
+            const h = player.portfolio[idx];
+            const newShares = Number(h.shares || 0) + shares;
+            const newAvg = newShares > 0 ? Number(((h.avgPrice * h.shares + cost) / newShares).toFixed(4)) : price;
+            h.shares = newShares;
+            h.avgPrice = newAvg;
+        } else {
+            player.portfolio = player.portfolio || [];
+            player.portfolio.push({ symbol: sym, shares, avgPrice: price });
+        }
+
+        player.money = Number(((player.money || 0) - cost).toFixed(2));
+        if (typeof player.markModified === 'function') player.markModified('portfolio');
+        return { action: 'buy', qty: shares, value: cost, symbol: sym };
+
+    } catch (e) {
+        console.error('NPC stocks handler error:', e.message);
+        return { action: 'error' };
+    }
+}
+
 
 async function handleGym(player){
   try {
@@ -201,7 +241,13 @@ function sampleSubset(arr, fraction){
 }
 
 async function tickNpcActions(){
-  const npcs = await Player.find({ npc: true });
+  // Precompute latest prices once for this tick
+  const symbols = Object.keys(stocksCfg);
+  const prices = {};
+  for (const s of symbols) {
+    try { const p = await getLatestPrice(s); prices[s] = Number(p?.price || 0); } catch { prices[s] = 0; }
+  }
+  const npcs = await Player.find({ npc: true }).select('name money portfolio energyStats battleStats happiness npc');
   if (!npcs || npcs.length === 0) return;
   console.log(`[npc] found NPCs: ${npcs.length}`);
   // Decide participation rate 20-40% per action for this tick
@@ -218,9 +264,12 @@ async function tickNpcActions(){
 
   for (const p of bankSet) { await handleBank(p); changed.add(p); }
   let buys=0, sells=0, skips=0;
+  let buyShares=0, sellShares=0; let buyValue=0, sellValue=0;
   for (const p of stocksSet) {
-    const r = await handleStocks(p);
-    if (r === 'buy') buys++; else if (r === 'sell') sells++; else skips++;
+    const r = await handleStocks(p, prices);
+    if (r && r.action === 'buy') { buys++; buyShares += Number(r.qty||0); buyValue += Number(r.value||0); }
+    else if (r && r.action === 'sell') { sells++; sellShares += Number(r.qty||0); sellValue += Number(r.value||0); }
+    else { skips++; }
     changed.add(p);
   }
   for (const p of gymSet) { await handleGym(p); changed.add(p); }
@@ -228,20 +277,29 @@ async function tickNpcActions(){
   for (const p of changed) {
     try { await p.save(); } catch (e) { console.error('Failed saving NPC:', e.message); }
   }
-  console.log(`[npc] tick summary: total=${npcs.length} stocksSet=${stocksSet.length} buys=${buys} sells=${sells} skips=${skips}`);
+  const vol = buyValue + sellValue;
+  const priced = Object.values(prices).filter(v => Number(v) > 0).length;
+  const summary = [
+    color.blueBright('[npc] stocks'),
+    color.green(`buys=${buys} (${buyShares} sh, $${fmtMoney(buyValue)})`),
+    color.yellow(`sells=${sells} (${sellShares} sh, $${fmtMoney(sellValue)})`),
+    color.magenta(`volume=$${fmtMoney(vol)}`),
+    color.gray(`actors=${stocksSet.length} symbols=${symbols.length} priced=${priced}`)
+  ].join('  ');
+  console.log(summary);
 }
 
 function scheduleNpcActions(){
-  // every 10 minutes staggered actions
-  cron.schedule('*/1 * * * *', async () => {
+  // every 10 minutes staggered actions (lower frequency to reduce load)
+  cron.schedule('*/10 * * * *', async () => {
     console.log('[cron] NPC actions tick');
     await tickNpcActions();
   });
-  // Warm-up tick shortly after start to seed activity
+  // One-time warm-up tick shortly after startup to confirm it's working
   setTimeout(() => {
-    console.log('[cron] NPC warm-up tick');
-    tickNpcActions().catch(()=>{});
-  }, 5000);
+    console.log('[cron] NPC actions warm-up tick');
+    tickNpcActions().catch(e => console.error('NPC warm-up error:', e.message));
+  }, 15000);
 }
 
 module.exports = scheduleNpcActions;

@@ -4,39 +4,19 @@ const cron = require('node-cron');
 
 async function tickCooldowns(deltaSec = 60) {
   try {
-    const players = await Player.find({}, { cooldowns: 1, name: 1 }).lean();
-    const updates = [];
-    for (const p of players) {
-      const cd = p.cooldowns || {};
-      const drug = Math.max(0, Number(cd.drugCooldown || 0) - deltaSec);
-      const booster = Math.max(0, Number(cd.boosterCooldown || 0) - deltaSec);
-      const medical = Math.max(0, Number(cd.medicalCooldown || 0) - deltaSec);
-      // Only update if changed
-      if (
-        drug !== Number(cd.drugCooldown || 0) ||
-        booster !== Number(cd.boosterCooldown || 0) ||
-        medical !== Number(cd.medicalCooldown || 0)
-      ) {
-        updates.push({ _id: p._id, drug, booster, medical });
-      }
-    }
-    // Apply updates in bulk
-    const bulk = updates.map(u => ({
-      updateOne: {
-        filter: { _id: u._id },
-        update: {
-          $set: {
-            'cooldowns.drugCooldown': u.drug,
-            'cooldowns.boosterCooldown': u.booster,
-            'cooldowns.medicalCooldown': u.medical,
-          }
-        }
-      }
-    }));
-    if (bulk.length) {
-      await Player.bulkWrite(bulk, { ordered: false });
-      console.log(`Cooldowns ticked for ${bulk.length} players (-${deltaSec}s)`);
-    }
+    // Decrement active cooldowns without loading all players in memory
+    const dec = -Math.abs(Number(deltaSec || 60));
+    const res1 = await Player.updateMany({ 'cooldowns.drugCooldown': { $gt: 0 } }, { $inc: { 'cooldowns.drugCooldown': dec } });
+    const res2 = await Player.updateMany({ 'cooldowns.boosterCooldown': { $gt: 0 } }, { $inc: { 'cooldowns.boosterCooldown': dec } });
+    const res3 = await Player.updateMany({ 'cooldowns.medicalCooldown': { $gt: 0 } }, { $inc: { 'cooldowns.medicalCooldown': dec } });
+
+    // Clamp negatives back to zero
+    await Player.updateMany({ 'cooldowns.drugCooldown': { $lt: 0 } }, { $set: { 'cooldowns.drugCooldown': 0 } });
+    await Player.updateMany({ 'cooldowns.boosterCooldown': { $lt: 0 } }, { $set: { 'cooldowns.boosterCooldown': 0 } });
+    await Player.updateMany({ 'cooldowns.medicalCooldown': { $lt: 0 } }, { $set: { 'cooldowns.medicalCooldown': 0 } });
+
+    const totalMods = (res1.modifiedCount||0) + (res2.modifiedCount||0) + (res3.modifiedCount||0);
+    if (totalMods > 0) console.log(`Cooldowns decremented (-${Math.abs(dec)}s) affected docs: ${totalMods}`);
   } catch (err) {
     console.error('tickCooldowns error:', err);
   }

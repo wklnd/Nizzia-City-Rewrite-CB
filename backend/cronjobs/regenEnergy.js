@@ -9,6 +9,7 @@ const regenEnergy = async () => {
   try {
     const players = await Player.find();
 
+    let updated = 0;
     for (const player of players) {
       const { energy, energyMax } = player.energyStats;
 
@@ -17,11 +18,14 @@ const regenEnergy = async () => {
         const newEnergy = Math.min(energy + 5, energyMax); // Regenerate 5 energy per tick
         player.energyStats.energy = newEnergy;
         await player.save();
-        console.log(`Energy regenerated for player ${player.name}: ${newEnergy}/${energyMax}`);
+        updated++;
+        if (process.env.LOG_REGEN === '1') {
+          console.log(`Energy regenerated for player ${player.name}: ${newEnergy}/${energyMax}`);
+        }
       }
     }
 
-    console.log('Energy regeneration completed.');
+    console.log(`Energy regeneration completed. updated=${updated}/${players.length}`);
   } catch (error) {
     console.error('Error during energy regeneration:', error);
   }
