@@ -1,5 +1,6 @@
 const wheelSettings = require("../config/casino");
 const Player = require("../models/Player");
+const Item = require("../models/Item");
 
 function wheelReward(wheel) {  
   if (!wheelSettings[wheel]) {
@@ -22,7 +23,7 @@ function wheelReward(wheel) {
 
 const spinWheel = async (req, res) => {
   try {
-    const { userId, wheel } = req.body; // Expecting userId and wheel type in the request body
+    const { userId, wheel } = req.body; // Expecting userId (numeric Player.id or user ObjectId) and wheel type
     if (!userId || !wheel) {
       return res.status(400).json({ error: "User ID and wheel type are required" });
     }
@@ -34,10 +35,35 @@ const spinWheel = async (req, res) => {
     }
     const cost = wheelConfig.cost;
 
-    // Fetch the player using the `id` field instead of `_id`
-    const player = await Player.findOne({ id: userId });
+    // Resolve player by numeric Player.id or by user ObjectId
+    let player = null;
+    const numId = Number(userId);
+    if (!Number.isNaN(numId)) {
+      player = await Player.findOne({ id: numId });
+    }
+    if (!player) {
+      // try by user ObjectId
+      player = await Player.findOne({ user: userId });
+    }
     if (!player) {
       return res.status(404).json({ error: "Player not found" });
+    }
+
+    // Enforce daily limit: one spin per wheel per 24 hours
+    const now = new Date();
+    const lastSpins = player.casino?.lastSpins;
+    let last = null;
+    if (lastSpins) {
+      if (typeof lastSpins.get === 'function') last = lastSpins.get(wheel) || null;
+      else last = lastSpins[wheel] || null;
+    }
+    // Legacy fallback (global limit) if per-wheel not present
+    if (!last && player.casino?.lastSpinAt) last = new Date(player.casino.lastSpinAt);
+    if (last && (now.getTime() - new Date(last).getTime()) < 24 * 60 * 60 * 1000) {
+      const msLeft = 24 * 60 * 60 * 1000 - (now.getTime() - new Date(last).getTime());
+      const hours = Math.floor(msLeft / 3600000);
+      const minutes = Math.floor((msLeft % 3600000) / 60000);
+      return res.status(429).json({ error: `Daily limit reached. Try again in ${hours}h ${minutes}m.` });
     }
 
     // Check if the player has enough money
@@ -46,15 +72,52 @@ const spinWheel = async (req, res) => {
     }
 
     // Deduct the cost from the player's money
-    player.money -= cost;
-    await player.save();
+    player.money = Number(player.money || 0) - Number(cost || 0);
 
     // Spin the wheel and determine the reward
     const reward = wheelReward(wheel);
 
+    // Apply reward for basic types
+    if (reward) {
+      if (reward.type === 'money') {
+        player.money = Number(player.money || 0) + Number(reward.value || 0);
+      } else if (reward.type === 'points') {
+        player.points = Number(player.points || 0) + Number(reward.value || 0);
+      } else if (reward.type === 'item') {
+        // Attempt to grant the item into inventory by item id slug
+        let itemDoc = await Item.findOne({ id: String(reward.value) });
+        if (itemDoc) {
+          player.inventory = player.inventory || [];
+          const idx = player.inventory.findIndex((e) => String(e.item) === String(itemDoc._id));
+          if (idx >= 0) {
+            player.inventory[idx].qty = Number(player.inventory[idx].qty || 0) + 1;
+          } else {
+            player.inventory.push({ item: itemDoc._id, qty: 1 });
+          }
+        } else {
+          // If item not found, include a hint in response but don't fail the spin
+          reward.warning = `Item ${reward.value} not found in catalog`;
+        }
+      }
+      // Note: items/tokens/effects/honors not applied in this minimal pass
+    }
+
+    // Update last spin time (per-wheel)
+    player.casino = player.casino || {};
+    if (!player.casino.lastSpins) player.casino.lastSpins = new Map();
+    if (typeof player.casino.lastSpins.set === 'function') {
+      player.casino.lastSpins.set(wheel, now);
+    } else {
+      // in case schema stored as plain object
+      player.casino.lastSpins[wheel] = now;
+      try { player.markModified && player.markModified('casino.lastSpins'); } catch (_) {}
+    }
+    await player.save();
+
     // Return the reward to the user
-    res.json({ reward, remainingMoney: player.money });
+    res.json({ reward, remainingMoney: player.money, points: player.points });
   } catch (err) {
+    console.error('[casino] spinWheel error:', err?.message || err);
     res.status(400).json({ error: err.message });
   }
 };

@@ -48,6 +48,24 @@ module.exports = {
     avgYieldPerYear: 0.05,
     volatility: 4.90,
     decimals: 2
+  },
+  S3X1: {
+    symbol: 'S3X1',
+    name: 'Sextronics Inc',
+    description: 'Something something something.',
+    initialPrice: 780,
+    avgYieldPerYear: 1.18,
+    volatility: 1.90,
+    decimals: 2
+  },
+  NNN : {
+    symbol: 'NNN',
+    name: 'Nizzia National News',
+    description: 'Something something something.',
+    initialPrice: 430,
+    avgYieldPerYear: 0.11,
+    volatility: 3.90,
+    decimals: 2
   }
 
 };

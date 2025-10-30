@@ -75,15 +75,60 @@
     });
   }
 
-  function initTicker(){
-    const news = [
+  // News ticker: supports two modes
+  // - 'single': show one item at a time, swapping every intervalSec (no scroll animation)
+  // - 'scroll': continuous scroll of concatenated items (uses CSS animation; speedSec controls duration)
+  let tickerState = { mode: 'single', intervalSec: 8, speedSec: 60, idx: 0, timer: null, news: null };
+
+  function setTickerNews(items){
+    tickerState.news = Array.isArray(items) && items.length ? items.slice() : [
       'Welcome to Nizzia City!',
       'Tip: Train in the gym to boost your battle stats.',
       'Pro tip: Happiness increases your gym gains!',
       'Jobs pay out daily at 01:00 server time.'
     ];
-    const ticker = document.getElementById('news-ticker');
-    if (ticker) ticker.textContent = news.concat(news).join(' — ');
+  }
+
+  function applyTickerMode(){
+    const track = document.getElementById('news-ticker');
+    const wrap = track ? track.closest('.ticker') : null;
+    if (!track || !wrap) return;
+    // clear any running timer
+    if (tickerState.timer) { clearInterval(tickerState.timer); tickerState.timer = null; }
+
+    if (tickerState.mode === 'single') {
+      wrap.classList.add('ticker--single');
+      // stop CSS scroll
+      track.style.animation = 'none';
+      // display one item and rotate
+      tickerState.idx = 0;
+      track.textContent = tickerState.news[tickerState.idx] || '';
+      tickerState.timer = setInterval(() => {
+        tickerState.idx = (tickerState.idx + 1) % tickerState.news.length;
+        track.textContent = tickerState.news[tickerState.idx] || '';
+      }, Math.max(2, tickerState.intervalSec) * 1000);
+    } else {
+      wrap.classList.remove('ticker--single');
+      // restore CSS scroll and set duration slower
+      track.style.animation = '';
+      track.style.animationDuration = `${Math.max(10, Number(tickerState.speedSec)||60)}s`;
+      // create concatenated line (repeat twice for smoother loop)
+      track.textContent = tickerState.news.concat(tickerState.news).join(' — ');
+    }
+  }
+
+  function setTickerMode(modeOrOpts){
+    const opts = typeof modeOrOpts === 'string' ? { mode: modeOrOpts } : (modeOrOpts || {});
+    if (opts.mode) tickerState.mode = (opts.mode === 'scroll' ? 'scroll' : 'single');
+    if (typeof opts.intervalSec === 'number') tickerState.intervalSec = opts.intervalSec;
+    if (typeof opts.speedSec === 'number') tickerState.speedSec = opts.speedSec;
+    applyTickerMode();
+  }
+
+  function initTicker(){
+    setTickerNews(tickerState.news);
+    // Default to single-item rotation; slower scroll available via setTickerMode('scroll')
+    setTickerMode({ mode: 'single', intervalSec: 8, speedSec: 60 });
   }
 
   function updateHP(player){
@@ -159,5 +204,5 @@
     ensureTopbarInserted();
   }
 
-  window.NC_UI = { init, ensureTopbarInserted, updateHP, attachRegenCountdowns };
+  window.NC_UI = { init, ensureTopbarInserted, updateHP, attachRegenCountdowns, setTickerMode, setTickerNews };
 })();

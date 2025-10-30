@@ -7,21 +7,13 @@ require('dotenv').config();
 // Nerve regeneration logic
 const regenNerve = async () => {
   try {
-    const players = await Player.find();
-
-    for (const player of players) {
-      const { nerve, nerveMax } = player.nerveStats;
-
-      // Regenerate nerve if it's below the maximum
-      if (nerve < nerveMax) {
-        const newNerve = Math.min(nerve + 1, nerveMax); // Regenerate 1 nerve per tick
-        player.nerveStats.nerve = newNerve;
-        await player.save();
-        console.log(`Nerve regenerated for player ${player.name}: ${newNerve}/${nerveMax}`);
-      }
-    }
-
-    console.log('Nerve regeneration completed.');
+    const res = await Player.updateMany(
+      { $expr: { $lt: ['$nerveStats.nerve', '$nerveStats.nerveMax'] } },
+      [ { $set: { 'nerveStats.nerve': { $min: [ { $add: ['$nerveStats.nerve', 1] }, '$nerveStats.nerveMax' ] } } } ]
+    );
+    const matched = res.matchedCount ?? res.n ?? 0;
+    const modified = res.modifiedCount ?? res.nModified ?? 0;
+    console.log(`Nerve regeneration completed. updated=${modified} matched=${matched}`);
   } catch (error) {
     console.error('Error during nerve regeneration:', error);
   }

@@ -7,26 +7,13 @@ require('dotenv').config();
 // Happiness regeneration logic
 const regenHappiness = async () => {
   try {
-    const players = await Player.find();
-
-    let updated = 0;
-    for (const player of players) {
-      const { happy, happyMax } = player.happiness;
-
-      // Regenerate happiness if it's below the maximum
-      if (happy < happyMax) {
-        const newHappy = Math.min(happy + 5, happyMax); // Regenerate 5 happiness per tick
-        player.happiness.happy = newHappy;
-        // Skip full validation to avoid unrelated schema enum errors
-        await player.save({ validateBeforeSave: false });
-        updated++;
-        if (process.env.LOG_REGEN === '1') {
-          console.log(`Happiness regenerated for player ${player.name}: ${newHappy}/${happyMax}`);
-        }
-      }
-    }
-
-    console.log(`Happiness regeneration completed. updated=${updated}/${players.length}`);
+    const res = await Player.updateMany(
+      { $expr: { $lt: ['$happiness.happy', '$happiness.happyMax'] } },
+      [ { $set: { 'happiness.happy': { $min: [ { $add: ['$happiness.happy', 5] }, '$happiness.happyMax' ] } } } ]
+    );
+    const matched = res.matchedCount ?? res.n ?? 0;
+    const modified = res.modifiedCount ?? res.nModified ?? 0;
+    console.log(`Happiness regeneration completed. updated=${modified} matched=${matched}`);
   } catch (error) {
     console.error('Error during happiness regeneration:', error);
   }

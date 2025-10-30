@@ -18,6 +18,20 @@ const scheduleRegenCooldowns = require('./cronjobs/regenCooldowns');
 const scheduleNpcActions = require('./cronjobs/npcActions');
 const schedulePlayerSnapshots = require('./cronjobs/playerSnapshot');
 const scheduleBankApr = require('./cronjobs/bankApr');
+const scheduleDailyReset = require('./cronjobs/dailyReset');
+
+// ------------------------------------------------------
+// Safe chalk import (works for both CommonJS and ESM)
+// ------------------------------------------------------
+let chalk = null;
+try {
+  const mod = require('chalk');
+  chalk = mod && mod.default ? mod.default : mod;
+} catch (_) {
+  // fallback: no-color shim
+  const id = (x) => x;
+  chalk = { green: id, yellow: id, red: id, blue: id, gray: id, bold: { red: id } };
+}
 
 const app = express();
 
@@ -25,7 +39,6 @@ const app = express();
 connectDB();
 
 // Middleware
-// CORS configuration: allow both localhost and 127.0.0.1 (useful across OSes)
 const allowedOrigins = [
   'http://localhost:5500',
   'http://127.0.0.1:5500',
@@ -33,19 +46,16 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin(origin, callback) {
-    // Allow non-browser requests or same-origin (no Origin header)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  // If you later use cookies, also set credentials: true and ensure explicit origins (no *)
   optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
-// Ensure preflight requests receive the proper CORS headers (Express 5: use '/*')
 app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 app.use(requestLogger());
@@ -57,7 +67,7 @@ mountRoutes(app);
 app.use(notFound);
 app.use(errorHandler);
 
-// Start scheduled cron jobs (can disable with DISABLE_CRON=true)
+// Start cron jobs
 if (process.env.DISABLE_CRON !== 'true') {
   scheduleRegenEnergy();
   scheduleRegenNerve();
@@ -68,10 +78,12 @@ if (process.env.DISABLE_CRON !== 'true') {
   scheduleNpcActions();
   schedulePlayerSnapshots();
   scheduleRegenCooldowns();
+  scheduleDailyReset();
 }
 
-// Start server (use 5050 by default to avoid macOS AirPlay conflict on 5000)
+// Start server
 const PORT = Number(process.env.PORT) || 5050;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(chalk.blue('Server started at ' + new Date().toISOString()));
+  console.log(chalk.green(`Server is running on port ${PORT}`));
 });

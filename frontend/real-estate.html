@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nizzia City - Real Estate</title>
+  <link rel="stylesheet" href="assets/style/game.css" />
+  <link rel="stylesheet" href="assets/style/topbar.css" />
+</head>
+<body>
+
+  <div class="sidebar">
+    <h2>Real Estate</h2>
+    <ul>
+      <li><a href="game.html">Home</a></li>
+      <li><a href="city.html">City</a></li>
+      <li><a href="gym.html">Gym</a></li>
+      <li><a href="inventory.html">Inventory</a></li>
+      <li><a href="real-estate.html" class="active">Real Estate</a></li>
+    </ul>
+  </div>
+
+  <div class="main-content">
+    <div class="content-section">
+      <h2>Real Estate Agent</h2>
+      <p>Buy, sell, and upgrade properties. Higher-tier homes increase your happiness cap.</p>
+      <div id="money" style="margin:8px 0; font-weight:600;"></div>
+      <div id="home" style="margin:8px 0;"></div>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <script src="assets/js/api.js"></script>
+  <script src="assets/js/utils.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script src="assets/js/pages/real-estate.js"></script>
+</body>
+</html>

@@ -10,6 +10,7 @@
     { id: 'stocks', name: 'Stock Exchange', icon: '📈', x: 80, y: 56, href: 'stocks.html' },
     { id: 'job', name: 'Job Center', icon: '🏢', x: 52, y: 72, href: 'job.html' },
     { id: 'hof', name: 'Hall of Fame', icon: '🏆', x: 32, y: 16, href: 'hall-of-fame.html' },
+  { id: 'real-estate', name: 'Real Estate', icon: '🏠', x: 72, y: 82, href: 'real-estate.html' },
 
     // Shops scroll to sections below
     { id: 'shop-candy', name: 'Candy Shop', icon: '🍬', x: 24, y: 44, sectionId: '#shop-candy' },

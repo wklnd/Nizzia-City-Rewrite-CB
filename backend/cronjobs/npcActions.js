@@ -181,6 +181,11 @@ async function handleGym(player){
     player.battleStats = player.battleStats || {};
     player.battleStats[statType] = Number(player.battleStats[statType] || 0) + parseFloat(gain);
     player.energyStats.energy = 0;
+    // Training reduces happiness proportionally to energy spent
+    if (player.happiness && typeof player.happiness.happy === 'number') {
+      const happinessCost = Math.max(1, Math.floor(energyPerTrain));
+      player.happiness.happy = Math.max(0, Number(player.happiness.happy || 0) - happinessCost);
+    }
   } catch (e) {
     console.error('NPC gym handler error:', e.message);
   }
@@ -207,7 +212,7 @@ async function handleBank(player){
         const periods = Object.keys(rates);
         const period = choice(periods);
         const apr = Number(rates[period]);
-        const maxDeposit = Math.min(2000000000, cash * (0.1 + Math.random() * 0.4)); // 10-50% of cash
+        const maxDeposit = Math.min(2000000000, cash * (0.1 + Math.random() * 0.9)); // 10-90% of cash
         const amount = Math.max(1, Math.floor(maxDeposit));
         if (amount >= 1 && cash >= amount) {
           const acct = new BankAccount({
@@ -290,14 +295,15 @@ async function tickNpcActions(){
 }
 
 function scheduleNpcActions(){
-  // every 10 minutes staggered actions (lower frequency to reduce load)
-  cron.schedule('*/10 * * * *', async () => {
+  // every 5 minutes staggered actions (lower frequency to reduce load)
+  cron.schedule('*/5 * * * *', async () => {
     console.log('[cron] NPC actions tick');
     await tickNpcActions();
   });
   // One-time warm-up tick shortly after startup to confirm it's working
   setTimeout(() => {
-    console.log('[cron] NPC actions warm-up tick');
+    warmUpSummary = [ color.green('[npc]'), color.blueBright('[warm-up]') ];    
+    console.log(warmUpSummary.join(' '));
     tickNpcActions().catch(e => console.error('NPC warm-up error:', e.message));
   }, 15000);
 }

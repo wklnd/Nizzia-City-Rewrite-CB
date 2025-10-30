@@ -62,6 +62,12 @@ const trainPlayer = async (req, res) => {
     // Deduct energy used for training
     player.energyStats.energy -= energyPerTrain;
 
+    // Reduce happiness based on energy spent (clamped to 0)
+    if (player.happiness && typeof player.happiness.happy === 'number') {
+      const happinessCost = Math.max(1, Math.floor(Number(energyPerTrain) || 0));
+      player.happiness.happy = Math.max(0, player.happiness.happy - happinessCost);
+    }
+
     // Save the updated player
     await player.save();
 
@@ -69,6 +75,7 @@ const trainPlayer = async (req, res) => {
       message: 'Player trained successfully',
       updatedStats: player.battleStats,
       remainingEnergy: player.energyStats.energy,
+      remainingHappiness: player.happiness?.happy,
     });
   } catch (error) {
     res.status(400).json({ error: error.message });

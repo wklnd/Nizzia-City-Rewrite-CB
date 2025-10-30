@@ -11,8 +11,9 @@ const rankNames = [
 ];
 
 const addJobAndWork = async () => {
-  const players = await Player.find({});
-  for (const player of players) {
+  let processed = 0, updated = 0;
+  const cursor = Player.find({}, 'name job workStats').cursor();
+  for await (const player of cursor) {
     const id = Number(player.job.jobId);
     if (isNaN(id)) continue;
     const job = jobSettings.jobs[id];
@@ -23,12 +24,7 @@ const addJobAndWork = async () => {
     const rank = job[rankKey];
     if (!rank) continue;
 
-    // Debug log
-    console.log(
-      `[CRON] ${player.name}: +${rank.jobPoints} JP,` +
-      ` +${rank.statsGained.manuallabor}/${rank.statsGained.intelligence}/` +
-      `${rank.statsGained.endurance} workStats`
-    );
+    processed++;
 
     // Apply both
     player.job.jobPoints             += rank.jobPoints;
@@ -36,8 +32,9 @@ const addJobAndWork = async () => {
     player.workStats.intelligence    += rank.statsGained.intelligence;
     player.workStats.endurance       += rank.statsGained.endurance;
 
-    await player.save();
+    try { await player.save(); updated++; } catch(_) {}
   }
+  console.log(`[jobCron] processed=${processed} updated=${updated}`);
 };
 
 

@@ -7,25 +7,14 @@ require('dotenv').config();
 // Energy regeneration logic
 const regenEnergy = async () => {
   try {
-    const players = await Player.find();
-
-    let updated = 0;
-    for (const player of players) {
-      const { energy, energyMax } = player.energyStats;
-
-      // Regenerate energy if it's below the maximum
-      if (energy < energyMax) {
-        const newEnergy = Math.min(energy + 5, energyMax); // Regenerate 5 energy per tick
-        player.energyStats.energy = newEnergy;
-        await player.save();
-        updated++;
-        if (process.env.LOG_REGEN === '1') {
-          console.log(`Energy regenerated for player ${player.name}: ${newEnergy}/${energyMax}`);
-        }
-      }
-    }
-
-    console.log(`Energy regeneration completed. updated=${updated}/${players.length}`);
+    // DB-side capped increment: energy = min(energy + 5, energyMax) for those below max
+    const res = await Player.updateMany(
+      { $expr: { $lt: ['$energyStats.energy', '$energyStats.energyMax'] } },
+      [ { $set: { 'energyStats.energy': { $min: [ { $add: ['$energyStats.energy', 5] }, '$energyStats.energyMax' ] } } } ]
+    );
+    const matched = res.matchedCount ?? res.n ?? 0;
+    const modified = res.modifiedCount ?? res.nModified ?? 0;
+    console.log(`Energy regeneration completed. updated=${modified} matched=${matched}`);
   } catch (error) {
     console.error('Error during energy regeneration:', error);
   }

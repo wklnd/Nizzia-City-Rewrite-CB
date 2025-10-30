@@ -16,7 +16,9 @@
     document.getElementById('btn-spin').addEventListener('click', async () => {
       result.textContent = 'Spinning…';
       try {
-        const data = await post('/casino/spin', { userId: user._id, wheel: select.value });
+        const player = window.NC_UTILS.getPlayer?.();
+        const userId = (player && typeof player.id !== 'undefined') ? player.id : user._id;
+        const data = await post('/casino/spin', { userId, wheel: select.value });
         result.textContent = `Result: ${data.reward?.type || 'unknown'} - ${data.reward?.value}. Remaining money: ${data.remainingMoney}`;
       } catch (e) {
         result.textContent = e.message;
