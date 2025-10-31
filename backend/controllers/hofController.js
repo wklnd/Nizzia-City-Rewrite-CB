@@ -23,9 +23,10 @@ async function getPricesMap(symbols){
 async function hallOfFame(req, res){
   try {
   const limit = Math.max(1, Math.min(100, Number(req.query.limit||10)));
-  // Include all players by default so Hall of Fame isn't empty on fresh databases
-  // (If you want to exclude NPCs, add a filter or query param later)
-  const players = await Player.find({}).select('user name id money battleStats workStats portfolio npc').lean();
+  const excludeNpc = String(req.query.excludeNpc||'false').toLowerCase() === 'true' || String(req.query.npc||'').toLowerCase() === 'exclude';
+  // Include all players by default so HoF isn't empty on fresh databases
+  const playerFilter = excludeNpc ? { npc: { $ne: true } } : {};
+  const players = await Player.find(playerFilter).select('user name id money battleStats workStats portfolio npc').lean();
 
     // Collect all symbols seen in portfolios
     const symbols = new Set();

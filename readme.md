@@ -46,6 +46,32 @@ npm run dev
 - `npm run dev` – start with autoreload (nodemon)
 - `npm run lint` – run ESLint
 
+### Player titles
+
+Allowed player titles are defined in `backend/config/playerTitles.js`. To add or remove titles, edit that file and restart the server. The `Player` model reads the list from this config, so you won't need to change the model when adding titles.
+
+### New Vue frontend (SPA)
+
+A modern Vue 3 + Vite app lives in `frontend-vue/`. It provides a reusable frame (Topbar, Sidebar, Footer) and routed pages (Home, Gym, City, Inventory, Money, Casino, Job, Stocks, Crimes, Property).
+
+Dev server:
+
+```
+cd frontend-vue
+npm install
+npm run dev
+```
+
+Build for production:
+
+```
+cd frontend-vue
+npm run build
+npm run preview # optional local preview
+```
+
+API base URL defaults to `/api` and is proxied to `http://localhost:5000` in dev (see `frontend-vue/vite.config.js`). You can override at runtime via `localStorage.setItem('nc_api', 'http://localhost:5050/api')`.
+
 ### Backend entrypoints and layout
 
 - `backend/app.js` – Express app and bootstrapping

@@ -42,8 +42,17 @@ const PROPERTIES = {
     id: 'private_island',
     name: 'Private Island',
     cost: 500000000,
-    upkeep: 250000,
-    baseHappyMax: 1000,
+    upkeep: 100000,
+    baseHappyMax: 2000,
+    upgradeCapacity: 3,
+    upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
+  },
+  silo: {
+    id: 'silo',
+    name: 'Silo',
+    cost: 5000000000,
+    upkeep: 1000000,
+    baseHappyMax: 8000,
     upgradeCapacity: 3,
     upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
   },
@@ -75,6 +84,12 @@ const UPGRADES = {
     name: 'Secure Vault',
     cost: (level) => 1000000 * level,
     bonus: (level) => ({happyMax: 2500 * level }),
+    },
+  airstrip: {
+    id: 'airstrip',
+    name: 'Airstrip',
+    cost: (level) => 90000000 * level,
+    bonus: (level) => ({happyMax: 5500 * level }),
     },
 
     

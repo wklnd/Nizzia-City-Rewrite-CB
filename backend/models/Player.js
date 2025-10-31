@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
+const playerTitles = require('../config/playerTitles');
 
 const playerSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   name: { type: String, required: true },
   id: { type: Number, required: true, unique: true },
   // Allow common synonyms to avoid validation failures on older records
-  gender: { type: String, enum: ["Male", "Female", "Enby", "Man", "Woman", "Non-binary", "Nonbinary", "NB"], required: true },
+  gender: { type: String, enum: ["Male", "Female", "Enby"], required: true },
   age: { type: Number, default: 0 }, // Day since registration
   level: { type: Number, default: 1 }, // Player level
   exp: { type: Number, default: 0 }, // Player experience
@@ -24,8 +25,10 @@ const playerSchema = new mongoose.Schema({
     }
   ],
 
-  // Simple health and jail tracking for crime outcomes
   health: { type: Number, default: 100, min: 0, max: 9999 },
+  hospitalized: { type: Boolean, default: false },
+  hospitalTime: { type: Number, default: 0 }, // seconds remaining
+  jailed: { type: Boolean, default: false },
   jailTime: { type: Number, default: 0 }, // seconds remaining
 
   money: { type: Number, default: 1000 }, // Player money
@@ -39,7 +42,7 @@ const playerSchema = new mongoose.Schema({
 
 
   playerStatus: { type: String, enum: ["Active", "Banned", "Suspended", "Abandoned"], default: "Active" },
-  playerTitle: { type: String, enum: ["New gun on the block", "Rookie", "War agent", "Alcholic", "Billionaire", "Trillionaire", "Tycoon", "Developer", "Admin", "Moderator", "DevBox 360"], default: "New gun on the block" },
+  playerTitle: { type: String, enum: playerTitles, default: "New gun on the block" },
   playerRole: { type: String, enum: ["Player", "Moderator", "Admin", "Developer"], default: "Player" },
 
 

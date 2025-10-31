@@ -1,0 +1,39 @@
+:root {
+  /* Dark theme (default) */
+  --bg: #0f1120;         /* app background */
+  --panel: #171a2b;      /* cards/panels */
+  --text: #e8eaf6;       /* primary text */
+  --muted: #a1a6c3;      /* secondary text */
+  --accent: #5ac8fa;     /* links/buttons */
+  --border: rgba(255,255,255,0.12);
+}
+
+/* Automatic light theme for users preferring light appearance */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f8fafc;       /* near-white slate */
+    --panel: #ffffff;    /* white panels */
+    --text: #111827;     /* slate-900 */
+    --muted: #4b5563;    /* slate-600 */
+    --accent: #2563eb;   /* blue-600 */
+    --border: #e5e7eb;   /* slate-200 */
+  }
+}
+
+* { box-sizing: border-box; }
+html, body, #app { height: 100%; margin: 0; }
+/* Enforce strong contrast app-wide */
+body { background: var(--bg) !important; color: var(--text) !important; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.muted { color: var(--muted); }
+.accent { color: var(--accent); }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
