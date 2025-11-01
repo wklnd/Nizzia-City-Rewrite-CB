@@ -1,214 +1,58 @@
-## Nizzia City – Developer Guide
+## Nizzia City - A Torn.com inspired Crime Game
 
-This repo contains a Node.js/Express backend and a static frontend. The backend has been refactored for maintainability with centralized routing, error handling, and configurable environment settings. Existing functionality and endpoint paths are preserved.
+### Lore: 
+Nizzia City is a rundown, crime-ridden city where players can immerse themselves in a virtual world filled with various activities, jobs, and interactions. The game draws inspiration from Torn.com, offering a similar experience with its own unique twists and features.
 
-### Quick start
+### Features
+- User Authentication: Secure login and registration system.
+- Player Profiles: Each player has a profile with stats, inventory, and achievements.
+- Casino System: Players can try their luck at the casino with various games and rewards.
+- Item Management: Players can acquire, use, and trade items.
+- Admin Panel: A dedicated interface for administrators to manage the game.
+- Real-time Updates: Dynamic updates to player stats and game events.
+- Cooldown System: Certain actions have cooldown periods to enhance gameplay balance.
 
-1) Create a `.env` (optional; sensible defaults exist):
 
-```
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/nizziacity
-JWT_SECRET=devsecret
-# To disable cron jobs (useful in tests):
-# DISABLE_CRON=true
-```
+### Tech
+Nizzia City's backend is written in NodeJS with the following packages:
+    "bcryptjs": "^2.4.3",
+    "chalk": "^5.6.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.14.2",
+    "morgan": "^1.10.0",
+    "node-cron": "^3.0.3"
 
-2) Install dependencies (Node 18+ recommended):
+The frontend is built with Vue.js 3 and uses:
+    "axios": "^1.7.7",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.38",
+    "vue-router": "^4.4.5"
 
-```
-npm install
-```
 
-3) Run the server:
+### Setup
+1. Clone the repository
+2. Run `npm install` in both `backend` and `frontend-vue` directories
+3. Create a `.env` file in the `backend` directory based on the `.env
+   example provided.
+4. Start the backend server with `npm start` in the `backend` directory.
+5. Start the frontend development server with `npm run dev` in the `frontend-vue` directory.
+6. Access the application at `http://localhost:5173` in your web browser.
 
-```
-npm start
-```
+### Database
+The application uses MongoDB as its database. Ensure you have a MongoDB instance running and properly
+configured in your `.env` file.
 
-For auto-reload in development:
-
-```
-npm run dev
-```
-
-### Notable backend improvements
-
-- Centralized route mounting in `backend/routes/index.js` keeps `backend/app.js` lean
-- Global 404 and error middleware for consistent responses
-- Optional HTTP request logging via `morgan` (no-op if not installed)
-- Configurable MongoDB URI with fallback to the previous default
-- Basic linting/formatting setup (ESLint flat config + Prettier) and npm scripts
-
-### Scripts
-
-- `npm start` – start API (`backend/app.js`)
-- `npm run dev` – start with autoreload (nodemon)
-- `npm run lint` – run ESLint
-
-### Player titles
-
-Allowed player titles are defined in `backend/config/playerTitles.js`. To add or remove titles, edit that file and restart the server. The `Player` model reads the list from this config, so you won't need to change the model when adding titles.
-
-### New Vue frontend (SPA)
-
-A modern Vue 3 + Vite app lives in `frontend-vue/`. It provides a reusable frame (Topbar, Sidebar, Footer) and routed pages (Home, Gym, City, Inventory, Money, Casino, Job, Stocks, Crimes, Property).
-
-Dev server:
-
-```
-cd frontend-vue
-npm install
-npm run dev
-```
-
-Build for production:
-
-```
-cd frontend-vue
-npm run build
-npm run preview # optional local preview
-```
-
-API base URL defaults to `/api` and is proxied to `http://localhost:5000` in dev (see `frontend-vue/vite.config.js`). You can override at runtime via `localStorage.setItem('nc_api', 'http://localhost:5050/api')`.
-
-### Backend entrypoints and layout
-
-- `backend/app.js` – Express app and bootstrapping
-- `backend/routes/index.js` – mounts all existing route modules on their base paths
-- `backend/middleware/` – request logger, 404 handler, and error handler
-- `backend/config/db.js` – MongoDB connection (uses `MONGODB_URI` if set)
-- `backend/cronjobs/` – scheduled jobs; can be disabled with `DISABLE_CRON=true`
-
----
-`
-torn-city-clone/
-├── backend/
-│   ├── config/
-│   │   └── db.js
-│   ├── controllers/
-│   │   ├── gymController.js
-│   │   └── userController.js
-│   ├── cronjobs/
-│   │   ├── regenEnergy.js
-│   │   └── dailyReset.js
-│   ├── middlewares/
-│   │   └── authMiddleware.js
-│   ├── models/
-│   │   ├── User.js
-│   │   └── Crime.js
-│   ├── routes/
-│   │   ├── gymRoutes.js
-│   │   └── userRoutes.js
-│   ├── services/
-│   │   ├── gymService.js
-│   │   └── crimeService.js
-│   ├── utils/
-│   │   ├── calculateDamage.js
-│   │   └── formatTime.js
-│   └── app.js
-│
-├── frontend/
-│   ├── public/
-│   │   └── index.html
-│   ├── src/
-│   │   ├── assets/
-│   │   │   └── logo.png
-│   │   ├── components/
-│   │   │   ├── StatBar.js
-│   │   │   └── Sidebar.js
-│   │   ├── pages/
-│   │   │   ├── Home.js
-│   │   │   ├── Gym.js
-│   │   │   └── Crimes.js
-│   │   ├── services/
-│   │   │   └── api.js
-│   │   └── App.js
-│   └── index.html
-│
-├── database/
-│   └── init.js
-│
-├── .env
-├── .gitignore
-├── package.json
-├── README.md
-└── server.js
-`
+### Contributing
+Contributing is not currently open, but all contributions will be considered in the future. Please fork the repository and create a pull request with your changes.
 
 
 
-
-
-Math: 
-
-https://www.overleaf.com/project/68166c89029ccf318880d825
-
-## Frontend structure (refactor, October 2025)
-
-- All inline scripts/styles have been moved to external files under `frontend/assets`.
-- Shared utilities
-	- `frontend/assets/js/api.js` – base API client (auto-injects token)
-	- `frontend/assets/js/utils.js` – formatting + session helpers
-- Page scripts
-	- `frontend/assets/js/pages/game.js`
-	- `frontend/assets/js/pages/gym.js`
-	- `frontend/assets/js/pages/city.js`
-	- `frontend/assets/js/pages/inventory.js`
-	- `frontend/assets/js/pages/money.js`
-	- `frontend/assets/js/pages/casino.js`
-	- `frontend/assets/js/pages/job.js`
-	- Auth: `frontend/assets/js/auth/login.js`, `auth/register.js`, `auth/create-player.js`
-- Styles
-	- `frontend/assets/style/game.css` – base layout
-	- `frontend/assets/style/topbar.css` – top bar + utilities
-	- `frontend/assets/style/gym.css`, `city.css`, `inventory.css`, `auth-pages.css`
-
-New/updated pages:
-- `frontend/game.html` – main app shell with navigation
-- `frontend/gym.html`, `frontend/city.html`, `frontend/inventory.html`
-- `frontend/money.html` – uses `/api/money/*`
-- `frontend/casino.html` – uses `/api/casino/spin`
-- `frontend/job.html` – hire/promote/leave job
-- `frontend/crimes.html` – placeholder (backend route currently disabled)
-
-Notes
-- Base API URL defaults to `http://localhost:5000/api`. You can override via `localStorage.setItem('nc_api', 'http://your-api/api')`.
-- The backend already enables CORS; open HTML files from disk or serve them statically with any simple server.
-
-### City map (frontend)
-
-The City page now features a lightweight interactive map with clickable points of interest (POIs): Gym, Casino, Crimes, Bank, Stocks, Job Center, and the three shop sections. The map is purely frontend and data-driven.
-
-- Location config: `frontend/assets/js/pages/city-map-data.js`
-	- Each entry has `{ id, name, icon, x, y, href?, sectionId?, comingSoon? }`
-	- `x`/`y` are percentages for placement within the map container.
-	- Use `href` to navigate to another page or `sectionId` (e.g., `#shop-candy`) to scroll to an on-page section.
-	- Set `comingSoon: true` to render a disabled marker with a "Soon" badge.
-
-- Markup and scripts:
-	- Map container is added in `frontend/city.html` as `#city-map`
-	- Styles in `frontend/assets/style/city.css`
-	- Rendering logic lives in `frontend/assets/js/pages/city.js`
-
-To add a new POI, append a new object to `window.NC_CITY_LOCATIONS` in `city-map-data.js`. Keep coordinates within the 0–100 range.
-
-
-# TODO
-
-
-## Player
-- Add Profile pictures. 
-- Add Friends / Enemy
-
-## Crimes
-- Fix crimes...
-
-## Profile 
-- Hide stats. 
-- Add profile image
-
-## Code
-- Fix code
-- Remove unused code
-- Update the frontend to vite or similiar. 
+### Upcoming Features
+- The Job Update 
+    - The job system allows players to work in various professions to earn money and gain experience. It also allows players to create their own companies, hire employees, and manage business operations. If the company does well, it even can be listed on the in-game stock market for players to invest in.
+	Each Job allows players to gain stats and job points, which can be used to gain perks and bonuses related to their profession.
+- Item Market
+	- An in-game marketplace where players can buy and sell items with each other. This feature will include an auction system, direct trades, and a listing system for players to showcase their items for sale.

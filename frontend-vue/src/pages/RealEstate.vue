@@ -3,6 +3,23 @@
     <h2>Property Broker</h2>
     <p class="muted">Browse properties, buy new homes, and set your active residence.</p>
 
+    <div v-if="ownedSummary.length" class="u-mt-6">
+      <h3>Your Properties</h3>
+      <div class="owned-grid u-mt-4">
+        <div class="owned-card" v-for="o in ownedSummary" :key="o.id">
+          <div class="owned-media">
+            <img v-if="imageOk[o.id]" :src="imageUrl(o.id)" :alt="o.name" @error="() => (imageOk[o.id] = false)" />
+            <div v-else class="card__placeholder">{{ o.name }}</div>
+            <div class="owned-badge" v-if="o.count>1">×{{ o.count }}</div>
+          </div>
+          <div class="owned-body">
+            <div class="owned-title">{{ o.name }}</div>
+            <div class="owned-meta">Base Happiness Max: {{ o.baseHappyMax }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="broker-toolbar u-mt-6">
       <div class="broker-toolbar__left">
         <strong>Money:</strong>
@@ -20,6 +37,7 @@
         <div class="card__media">
           <img v-if="imageOk[p.id]" :src="imageUrl(p.id)" :alt="p.name" @error="() => (imageOk[p.id] = false)" />
           <div v-else class="card__placeholder">{{ p.name }}</div>
+          <div class="count-badge" v-if="(ownedCounts[p.id]||0) > 1">×{{ ownedCounts[p.id] }}</div>
         </div>
         <div class="card__body">
           <div class="card__row">
@@ -64,9 +82,11 @@
             </template>
             <template v-else-if="!p.active">
               <button class="btn btn--primary" :disabled="busy" @click="setActive(p)">Set Active</button>
+              <button class="btn" :disabled="busy || Number(store.player?.money||0) < Number(p.cost||0)" @click="buy(p, false)">Buy Another</button>
             </template>
             <template v-else>
               <button class="btn" disabled>Current Home</button>
+              <button class="btn btn--primary" :disabled="busy || Number(store.player?.money||0) < Number(p.cost||0)" @click="buy(p, false)">Buy Another</button>
             </template>
           </div>
         </div>
@@ -92,6 +112,26 @@ const busy = ref(false)
 const showOwnedOnly = ref(false)
 const imageOk = reactive({})
 const loading = ref(false)
+const ownedCounts = computed(() => {
+  const map = {}
+  const props = store.player?.properties || []
+  for (const e of props) {
+    map[e.propertyId] = (map[e.propertyId] || 0) + 1
+  }
+  return map
+})
+const ownedSummary = computed(() => {
+  const map = new Map()
+  const defs = new Map(catalog.value.map(p => [p.id, p]))
+  const props = store.player?.properties || []
+  for (const e of props) {
+    const id = e.propertyId
+    const count = map.get(id)?.count || 0
+    const def = defs.get(id) || { id, name: id, baseHappyMax: 0 }
+    map.set(id, { id, name: def.name || id, baseHappyMax: def.baseHappyMax || 0, count: count + 1 })
+  }
+  return Array.from(map.values())
+})
 
 function imageUrl(id){
   return `/assets/images/property_${id}.jpg`
@@ -245,6 +285,7 @@ watch(() => store.player?.user, async (v, ov) => {
 .card__media { width: 100%; aspect-ratio: 16/9; background: #13161c; }
 .card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .card__placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--muted, #99a2b2); }
+.count-badge { position: absolute; right: 8px; top: 8px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border, #2b2f38); }
 .card__body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
 .card__row { display: flex; justify-content: space-between; align-items: baseline; }
 .card__title { font-weight: 600; }
@@ -272,4 +313,14 @@ watch(() => store.player?.user, async (v, ov) => {
 
 .error { color: #ff7b7b; }
 .empty { grid-column: 1 / -1; padding: 12px; }
+
+/* Owned list */
+.owned-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.owned-card { border: 1px solid var(--border, #2b2f38); border-radius: 10px; background: rgba(255,255,255,0.02); overflow: hidden; }
+.owned-media { position: relative; width: 100%; aspect-ratio: 16/9; background: #13161c; }
+.owned-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.owned-badge { position: absolute; right: 8px; top: 8px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border, #2b2f38); }
+.owned-body { padding: 8px; }
+.owned-title { font-weight: 600; }
+.owned-meta { font-size: 12px; color: var(--muted, #99a2b2); }
 </style>

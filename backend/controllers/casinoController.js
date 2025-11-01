@@ -1,6 +1,7 @@
 const wheelSettings = require("../config/casino");
 const Player = require("../models/Player");
 const Item = require("../models/Item");
+const { PROPERTIES } = require("../config/properties");
 
 function wheelReward(wheel) {  
   if (!wheelSettings[wheel]) {
@@ -49,9 +50,10 @@ const spinWheel = async (req, res) => {
       return res.status(404).json({ error: "Player not found" });
     }
 
-    // Enforce daily limit: one spin per wheel per 24 hours
+    // Enforce daily limit: one spin per wheel per 24 hours (Admins/Developers exempt)
     const now = new Date();
     const lastSpins = player.casino?.lastSpins;
+    const isPrivileged = player.playerRole === 'Admin' || player.playerRole === 'Developer'
     let last = null;
     if (lastSpins) {
       if (typeof lastSpins.get === 'function') last = lastSpins.get(wheel) || null;
@@ -59,7 +61,7 @@ const spinWheel = async (req, res) => {
     }
     // Legacy fallback (global limit) if per-wheel not present
     if (!last && player.casino?.lastSpinAt) last = new Date(player.casino.lastSpinAt);
-    if (last && (now.getTime() - new Date(last).getTime()) < 24 * 60 * 60 * 1000) {
+    if (!isPrivileged && last && (now.getTime() - new Date(last).getTime()) < 24 * 60 * 60 * 1000) {
       const msLeft = 24 * 60 * 60 * 1000 - (now.getTime() - new Date(last).getTime());
       const hours = Math.floor(msLeft / 3600000);
       const minutes = Math.floor((msLeft % 3600000) / 60000);
@@ -98,6 +100,17 @@ const spinWheel = async (req, res) => {
           // If item not found, include a hint in response but don't fail the spin
           reward.warning = `Item ${reward.value} not found in catalog`;
         }
+      } else if (reward.type === 'property') {
+        // Grant a property instance if the property id exists in our catalog
+        const propId = String(reward.value);
+        if (PROPERTIES[propId]) {
+          player.properties = player.properties || [];
+          player.properties.push({ propertyId: propId, upgrades: {}, acquiredAt: new Date() });
+          // If no home set, default to the first acquired property
+          if (!player.home) player.home = propId;
+        } else {
+          reward.warning = `Property ${propId} not found in catalog`;
+        }
       }
       // Note: items/tokens/effects/honors not applied in this minimal pass
     }
@@ -122,4 +135,11 @@ const spinWheel = async (req, res) => {
   }
 };
 
-module.exports = { spinWheel };
+const getWheels = async (req, res) => {
+  try {
+    const list = Object.entries(wheelSettings).map(([id, w]) => ({ id, name: w.name, cost: w.cost }))
+    res.json({ wheels: list })
+  } catch (e) { res.status(500).json({ error: 'Failed to load wheels' }) }
+}
+
+module.exports = { spinWheel, getWheels };

@@ -12,35 +12,45 @@
       <div class="meta">Qty: ${entry.qty || 0}</div>
     `;
     if (item.usable) {
-      const btn = document.createElement('button');
+  const btn = document.createElement('button');
       btn.textContent = 'Use';
       // Determine cooldown type and remaining for this item
       const effect = item.effect || {};
-      const t = String((effect.cooldownType || '').toLowerCase() || (item.type === 'drugs' ? 'drug' : item.type === 'enhancers' ? 'booster' : (item.type === 'medicine' || item.type === 'alchool') ? 'medical' : ''));
+  const inferred = (item.type === 'drugs' ? 'drug'
+        : item.type === 'enhancers' ? 'booster'
+        : item.type === 'alchool' ? 'alcohol'
+        : item.type === 'medicine' ? 'medical'
+        : '');
+  const t = String((effect.cooldownType || '').toLowerCase() || inferred);
       const playerCds = (player && player.cooldowns) ? player.cooldowns : {};
-      const remaining = t === 'drug' ? Number(playerCds.drugCooldown||0)
-                        : t === 'booster' ? Number(playerCds.boosterCooldown||0)
-                        : t === 'medical' ? Number(playerCds.medicalCooldown||0)
-                        : 0;
+  const remaining = t === 'drug' ? Number(playerCds.drugCooldown||0)
+        : t === 'booster' ? Number(playerCds.boosterCooldown||0)
+        : t === 'medical' ? Number(playerCds.medicalCooldown||0)
+        : t === 'alcohol' ? Number(playerCds.alcoholCooldown||0)
+        : 0;
       const cdEl = document.createElement('div');
       cdEl.className = 'meta';
       if (remaining > 0) {
-        btn.disabled = true;
         const mm = String(Math.floor(remaining/60)).padStart(2,'0');
         const ss = String(remaining%60).padStart(2,'0');
         cdEl.textContent = `Cooldown: ${mm}:${ss}`;
       }
+      // Alcohol rule: can drink while remaining < 24h; block only at/over 24h
+      const isBlocked = t === 'alcohol' ? remaining >= (24*3600) : remaining > 0;
+      if (isBlocked) btn.disabled = true;
       btn.addEventListener('click', async () => {
         btn.disabled = true;
         try {
           const res = await post('/inventory/use', { userId: user._id, itemId: item._id, qty: 1 });
           // Refresh list with updated inventory
           try {
-            // Update cached player vitals and cooldowns if present
+            // Update cached player vitals, points, money, and cooldowns if present
             const cached = window.NC_UTILS.getPlayerCached() || {};
             if (res.energy != null) cached.energyStats = { ...(cached.energyStats||{}), energy: res.energy };
             if (res.nerve != null) cached.nerveStats = { ...(cached.nerveStats||{}), nerve: res.nerve };
             if (res.happy != null) cached.happiness = { ...(cached.happiness||{}), happy: res.happy };
+            if (res.points != null) cached.points = Number(res.points);
+            if (res.money != null) cached.money = Number(res.money);
             if (res.cooldowns) {
               cached.cooldowns = {
                 ...(cached.cooldowns||{}),
@@ -51,6 +61,8 @@
             }
             window.NC_UTILS.setPlayer(cached);
             window.NC_UI?.updateHP?.(cached);
+            // If topbar has a points/money display in the future, we can also refresh it here
+            window.NC_UI?.refreshTopbarStats?.();
           } catch(_) {}
           renderInventory(res.inventory || [], user);
           window.NC_UI?.flash?.('Item used successfully');
@@ -67,7 +79,7 @@
         }
       });
       card.appendChild(btn);
-      if (remaining > 0) card.appendChild(cdEl);
+  if (remaining > 0) card.appendChild(cdEl);
     }
     return card;
   }

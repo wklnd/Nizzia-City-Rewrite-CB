@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Creation Workbench</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Creation Workbench</h1>
+    <p class="muted">Offline builder for Items, Properties, Titles, and Honorbars. Data is not saved automatically – use Download/Load buttons to export/import JSON files.</p>
+
+    <div class="toolbar">
+      <label>Entity</label>
+      <select id="entitySelect">
+        <option value="items">Items</option>
+        <option value="properties">Properties</option>
+        <option value="titles">Titles</option>
+        <option value="honorbars">Honorbars</option>
+      </select>
+      <div class="spacer"></div>
+      <input type="file" id="fileInput" accept="application/json" />
+      <button id="btnLoad">Load JSON</button>
+      <button id="btnDownload">Download JSON</button>
+      <button id="btnClear" class="secondary">Clear List</button>
+    </div>
+
+    <div id="formArea" class="card"></div>
+
+    <div class="card">
+      <div class="list-header">
+        <h3>Current Entries</h3>
+        <span id="countLabel" class="muted">0 entries</span>
+      </div>
+      <div id="list"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

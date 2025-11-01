@@ -16,6 +16,19 @@ const {
   giveMoneyToAll,
   stocksCrash,
   stocksRocket,
+  // moderation
+  setPlayerStatus,
+  setPlayerTitle,
+  setPlayerRole,
+  listPlayerTitles,
+  setAddiction,
+  // cooldowns
+  getPlayerCooldowns,
+  setPlayerCooldown,
+  clearPlayerCooldown,
+  resetAllCooldowns,
+  // database
+  purgeDatabase,
 } = require('../controllers/adminController');
 
 // Attach auth info from Authorization header on all admin routes
@@ -43,9 +56,23 @@ router.post('/bank/force-withdraw', bankForceWithdraw);
 
 // Search
 router.get('/players/search', searchPlayers);
+// Player moderation
+router.get('/player/titles', listPlayerTitles);
+router.patch('/player/status', setPlayerStatus);
+router.patch('/player/title', setPlayerTitle);
+router.patch('/player/role', setPlayerRole);
+router.patch('/player/addiction', setAddiction);
+// Player cooldowns
+router.get('/player/cooldowns/:userId', getPlayerCooldowns);
+router.post('/player/cooldowns/set', setPlayerCooldown);
+router.post('/player/cooldowns/clear', clearPlayerCooldown);
+router.post('/cooldowns/reset-all', resetAllCooldowns);
 
 // General bulk actions
 router.post('/general/energy-max', setAllEnergyToMax);
 router.post('/general/give-money', giveMoneyToAll);
+
+// Database maintenance (danger)
+router.post('/database/purge', purgeDatabase);
 
 module.exports = router;

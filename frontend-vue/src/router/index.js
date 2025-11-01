@@ -9,6 +9,7 @@ const Casino = () => import('../pages/Casino.vue')
 const Job = () => import('../pages/Job.vue')
 const Stocks = () => import('../pages/Stocks.vue')
 const Crimes = () => import('../pages/Crimes.vue')
+const CrimeSearchForCash = () => import('../pages/crime/SearchForCash.vue')
 const Property = () => import('../pages/Property.vue')
 const Bank = () => import('../pages/Bank.vue')
 const Profile = () => import('../pages/Profile.vue')
@@ -39,6 +40,7 @@ const routes = [
   { path: '/job', name: 'job', component: Job },
   { path: '/stocks', name: 'stocks', component: Stocks },
   { path: '/crimes', name: 'crimes', component: Crimes },
+  { path: '/crimes/search-for-cash', name: 'crime-search-for-cash', component: CrimeSearchForCash },
   { path: '/property', name: 'property', component: Property },
   { path: '/bank', name: 'bank', component: Bank },
   { path: '/profile', name: 'profile', component: Profile },

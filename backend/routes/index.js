@@ -20,8 +20,8 @@ function mountRoutes(app) {
   app.use('/api/items', itemRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/player', playerRoutes);
-  // Crime routes currently disabled in original app.js; keep behavior unchanged
-  // app.use('/api/crime', crimeRoutes);
+  // Crime routes
+  app.use('/api/crime', crimeRoutes);
   app.use('/api/gym', gymRoutes);
   app.use('/api/casino', casinoRoutes);
   app.use('/api/money', moneyRoutes);

@@ -173,6 +173,8 @@ async function loadAccounts(){
 
 function init(){
   loadSavedIds();
+  // Fetch titles for moderation dropdown
+  loadTitles().catch(()=>{});
   // Load player by numeric id, auto-populate targetUserId and render profile
   document.getElementById('loadPlayer').addEventListener('click', () => loadPlayer().catch(e=>alert(e.message||e)));
   const searchInput = document.getElementById('searchQuery');
@@ -221,6 +223,20 @@ function init(){
   if (gEM) gEM.addEventListener('click', () => generalEnergyMax().catch(e=>alert(e.message||e)));
   const gGM = document.getElementById('generalGiveMoney');
   if (gGM) gGM.addEventListener('click', () => generalGiveMoney().catch(e=>alert(e.message||e)));
+  // Moderation
+  const aS = document.getElementById('applyStatus'); if (aS) aS.addEventListener('click', ()=> applyStatus().catch(e=>alert(e.message||e)));
+  const aR = document.getElementById('applyRole'); if (aR) aR.addEventListener('click', ()=> applyRole().catch(e=>alert(e.message||e)));
+  const aT = document.getElementById('applyTitle'); if (aT) aT.addEventListener('click', ()=> applyTitle().catch(e=>alert(e.message||e)));
+  // Cooldowns
+  const cdL = document.getElementById('cdLoad'); if (cdL) cdL.addEventListener('click', ()=> cdLoad().catch(e=>alert(e.message||e)));
+  const cdSD = document.getElementById('cdSetDrug'); if (cdSD) cdSD.addEventListener('click', ()=> cdSet('drug').catch(e=>alert(e.message||e)));
+  const cdSM = document.getElementById('cdSetMedical'); if (cdSM) cdSM.addEventListener('click', ()=> cdSet('medical').catch(e=>alert(e.message||e)));
+  const cdSB = document.getElementById('cdSetBooster'); if (cdSB) cdSB.addEventListener('click', ()=> cdSet('booster').catch(e=>alert(e.message||e)));
+  const cdSA = document.getElementById('cdSetAlcohol'); if (cdSA) cdSA.addEventListener('click', ()=> cdSet('alcohol').catch(e=>alert(e.message||e)));
+  const cdCA = document.getElementById('cdClearAll'); if (cdCA) cdCA.addEventListener('click', ()=> cdClear('all').catch(e=>alert(e.message||e)));
+  const cdRA = document.getElementById('cdResetAll'); if (cdRA) cdRA.addEventListener('click', ()=> cdResetAll().catch(e=>alert(e.message||e)));
+  // Database purge
+  const dbP = document.getElementById('dbPurge'); if (dbP) dbP.addEventListener('click', ()=> dbPurge().catch(e=>alert(e.message||e)));
 }
 
 document.addEventListener('DOMContentLoaded', init);
@@ -276,6 +292,7 @@ function renderProfileSummary(profile){
   const vit = profile.vitals || {};
   el.innerHTML = `
     <div><strong>${profile.name}</strong> (id=${profile.id}) ${profile.npc ? '<span class="pill">NPC</span>' : ''}</div>
+    <div class="muted" style="margin-top:4px">Status: <strong>${profile.playerStatus}</strong> · Role: <strong>${profile.playerRole}</strong> · Title: <strong>${profile.playerTitle}</strong></div>
     <div class="row" style="margin-top:8px">
       <div>
         <label>Money</label>
@@ -330,6 +347,14 @@ async function loadPlayer(){
   // Fetch public profile for quick overview
   const profile = await NC_API.get(`/player/profile/${encodeURIComponent(String(playerId))}`);
   renderProfileSummary(profile);
+  // Pre-fill moderation selectors if present
+  try {
+    const s = document.getElementById('modStatus'); if (s) s.value = profile.playerStatus || 'Active';
+    const r = document.getElementById('modRole'); if (r) r.value = profile.playerRole || 'Player';
+    const t = document.getElementById('modTitle'); if (t && profile.playerTitle) {
+      if ([...t.options].some(o => o.value === profile.playerTitle)) t.value = profile.playerTitle;
+    }
+  } catch(_) {}
 }
 
 // General bulk actions
@@ -349,4 +374,106 @@ async function generalGiveMoney(){
   if (!Number.isFinite(amountVal) || amountVal === 0) throw new Error('Enter a non-zero amount');
   const res = await NC_API.post('/admin/general/give-money', { adminUserId, includeNPC, amount: amountVal });
   alert(`Money updated (+${amountVal}) for ${res.modified||0}/${res.matched||0} players`);
+}
+
+// ------------------------
+// Moderation
+// ------------------------
+async function loadTitles(){
+  try {
+    const data = await NC_API.get('/admin/player/titles');
+    const sel = document.getElementById('modTitle');
+    if (!sel) return;
+    sel.innerHTML = '';
+    (data.titles||[]).forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t; opt.textContent = t; sel.appendChild(opt);
+    });
+  } catch (e) {
+    // silently ignore
+  }
+}
+
+async function applyStatus(){
+  const { targetUserId } = getIds();
+  const adminUserId = getAdminUserId();
+  const status = document.getElementById('modStatus').value;
+  const res = await NC_API.patch('/admin/player/status', { ...(adminUserId ? { adminUserId } : {}), targetUserId, status });
+  alert('Status set: ' + JSON.stringify(res));
+}
+async function applyRole(){
+  const { targetUserId } = getIds();
+  const adminUserId = getAdminUserId();
+  const role = document.getElementById('modRole').value;
+  const res = await NC_API.patch('/admin/player/role', { ...(adminUserId ? { adminUserId } : {}), targetUserId, role });
+  alert('Role set: ' + JSON.stringify(res));
+}
+async function applyTitle(){
+  const { targetUserId } = getIds();
+  const adminUserId = getAdminUserId();
+  const title = document.getElementById('modTitle').value;
+  const res = await NC_API.patch('/admin/player/title', { ...(adminUserId ? { adminUserId } : {}), targetUserId, title });
+  alert('Title set: ' + JSON.stringify(res));
+}
+
+// ------------------------
+// Cooldowns
+// ------------------------
+async function cdLoad(){
+  const { targetUserId } = getIds();
+  const adminUserId = getAdminUserId();
+  const data = await NC_API.get(`/admin/player/cooldowns/${encodeURIComponent(targetUserId)}${adminUserId ? `?adminUserId=${encodeURIComponent(adminUserId)}` : ''}`);
+  const cd = data.cooldowns || {};
+  const box = document.getElementById('cdCurrent');
+  box.innerHTML = '';
+  const lines = [
+    `drugCooldown: ${cd.drugCooldown||0}s`,
+    `medicalCooldown: ${cd.medicalCooldown||0}s`,
+    `boosterCooldown: ${cd.boosterCooldown||0}s`,
+    `alcoholCooldown: ${cd.alcoholCooldown||0}s`,
+  ];
+  const perDrug = cd.drugs || {};
+  if (Object.keys(perDrug).length) {
+    lines.push('per-drug: ' + JSON.stringify(perDrug));
+  }
+  box.textContent = lines.join(' | ');
+}
+
+async function cdSet(category){
+  const { targetUserId } = getIds();
+  const adminUserId = getAdminUserId();
+  const idMap = { drug: 'cdDrug', medical: 'cdMedical', booster: 'cdBooster', alcohol: 'cdAlcohol' };
+  const el = document.getElementById(idMap[category]);
+  const seconds = Number(el?.value || 0);
+  const res = await NC_API.post('/admin/player/cooldowns/set', { ...(adminUserId ? { adminUserId } : {}), targetUserId, category, seconds });
+  alert('Cooldown set: ' + JSON.stringify(res));
+  await cdLoad();
+}
+
+async function cdClear(scope){
+  const { targetUserId } = getIds();
+  const adminUserId = getAdminUserId();
+  const res = await NC_API.post('/admin/player/cooldowns/clear', { ...(adminUserId ? { adminUserId } : {}), targetUserId, scope });
+  alert('Cooldowns cleared: ' + JSON.stringify(res));
+  await cdLoad();
+}
+
+async function cdResetAll(){
+  const adminUserId = getAdminUserId();
+  if (!adminUserId) throw new Error('Fill Admin userId');
+  const includeNPC = document.getElementById('cdIncludeNPC')?.value === 'true';
+  const res = await NC_API.post('/admin/cooldowns/reset-all', { adminUserId, includeNPC });
+  alert(`Cooldowns reset for ${res.modified||0}/${res.matched||0} players`);
+}
+
+// ------------------------
+// Database purge (danger)
+// ------------------------
+async function dbPurge(){
+  const adminUserId = getAdminUserId();
+  if (!adminUserId) throw new Error('Fill Admin userId');
+  const confirm = document.getElementById('dbConfirm').value.trim();
+  if (confirm !== 'DROP') throw new Error('Type DROP to confirm');
+  const res = await NC_API.post('/admin/database/purge', { adminUserId, confirm });
+  alert('Database dropped: ' + JSON.stringify(res));
 }

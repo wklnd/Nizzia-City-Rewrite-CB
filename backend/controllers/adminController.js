@@ -2,6 +2,7 @@ const Player = require('../models/Player');
 const Item = require('../models/Item');
 const BankAccount = require('../models/Bank');
 const stocksCfg = require('../config/stocks');
+const playerTitles = require('../config/playerTitles');
 const { getLatestPrice } = require('../services/stockService');
 const { calculatePayout } = require('../services/bankService');
 const mongoose = require('mongoose');
@@ -466,4 +467,251 @@ module.exports = {
   giveMoneyToAll,
   stocksCrash,
   stocksRocket,
+  // moderation & management
+  setPlayerStatus,
+  setPlayerTitle,
+  setPlayerRole,
+  listPlayerTitles,
+  setAddiction,
+  // cooldowns
+  getPlayerCooldowns,
+  setPlayerCooldown,
+  clearPlayerCooldown,
+  resetAllCooldowns,
+  // database
+  purgeDatabase,
 };
+
+// ------------------------------
+// Moderation & metadata
+// ------------------------------
+
+// PATCH /api/admin/player/status { adminUserId, targetUserId, status }
+async function setPlayerStatus(req, res) {
+  try {
+    const { targetUserId, status } = req.body;
+    if (!targetUserId || !status) return res.status(400).json({ error: 'targetUserId and status are required' });
+    await getAdminPlayerFromReq(req);
+    const allowed = ["Active","Banned","Suspended","Abandoned"];
+    if (!allowed.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+    const player = await Player.findOne({ user: targetUserId });
+    if (!player) return res.status(404).json({ error: 'Target player not found' });
+    player.playerStatus = status;
+    await player.save();
+    return res.json({ playerStatus: player.playerStatus });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN setPlayerStatus error:', err);
+    return res.status(500).json({ error: 'Failed to set player status' });
+  }
+}
+
+// PATCH /api/admin/player/title { adminUserId, targetUserId, title }
+async function setPlayerTitle(req, res) {
+  try {
+    const { targetUserId, title } = req.body;
+    if (!targetUserId || !title) return res.status(400).json({ error: 'targetUserId and title are required' });
+    await getAdminPlayerFromReq(req);
+    if (!playerTitles.includes(title)) return res.status(400).json({ error: 'Invalid title' });
+    const player = await Player.findOne({ user: targetUserId });
+    if (!player) return res.status(404).json({ error: 'Target player not found' });
+    player.playerTitle = title;
+    await player.save();
+    return res.json({ playerTitle: player.playerTitle });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN setPlayerTitle error:', err);
+    return res.status(500).json({ error: 'Failed to set player title' });
+  }
+}
+
+// PATCH /api/admin/player/role { adminUserId, targetUserId, role }
+async function setPlayerRole(req, res) {
+  try {
+    const { targetUserId, role } = req.body;
+    if (!targetUserId || !role) return res.status(400).json({ error: 'targetUserId and role are required' });
+    const adminPlayer = await getAdminPlayerFromReq(req);
+    // Only Developers can set role to Developer; Admin can set up to Admin
+    const allowedRoles = ["Player","Moderator","Admin","Developer"];
+    if (!allowedRoles.includes(role)) return res.status(400).json({ error: 'Invalid role' });
+    if (role === 'Developer' && adminPlayer.playerRole !== 'Developer') return res.status(403).json({ error: 'Only Developers can assign Developer role' });
+    const player = await Player.findOne({ user: targetUserId });
+    if (!player) return res.status(404).json({ error: 'Target player not found' });
+    // Prevent non-Developer from changing a Developer
+    if (player.playerRole === 'Developer' && adminPlayer.playerRole !== 'Developer') return res.status(403).json({ error: 'Cannot modify Developer role' });
+    player.playerRole = role;
+    await player.save();
+    return res.json({ playerRole: player.playerRole });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN setPlayerRole error:', err);
+    return res.status(500).json({ error: 'Failed to set player role' });
+  }
+}
+
+// GET /api/admin/player/titles
+async function listPlayerTitles(_req, res) {
+  try {
+    return res.json({ titles: playerTitles });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to list titles' });
+  }
+}
+
+// PATCH /api/admin/player/addiction { adminUserId, targetUserId, value }
+async function setAddiction(req, res) {
+  try {
+    const { targetUserId, value } = req.body;
+    if (!targetUserId || typeof value === 'undefined') return res.status(400).json({ error: 'targetUserId and value are required' });
+    await getAdminPlayerFromReq(req);
+    const v = Math.max(0, Math.min(99999, Number(value)));
+    const player = await Player.findOneAndUpdate({ user: targetUserId }, { $set: { addiction: v } }, { new: true }).lean();
+    if (!player) return res.status(404).json({ error: 'Target player not found' });
+    return res.json({ addiction: player.addiction || v });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN setAddiction error:', err);
+    return res.status(500).json({ error: 'Failed to set addiction' });
+  }
+}
+
+// ------------------------------
+// Cooldowns
+// ------------------------------
+
+// GET /api/admin/player/cooldowns/:userId
+async function getPlayerCooldowns(req, res) {
+  try {
+    await getAdminPlayerFromReq(req);
+    const userId = req.params.userId;
+    const player = await Player.findOne({ user: userId }).lean();
+    if (!player) return res.status(404).json({ error: 'Target player not found' });
+    const cd = player.cooldowns || {};
+    const summary = {
+      drugCooldown: Number(cd.drugCooldown || 0),
+      medicalCooldown: Number(cd.medicalCooldown || 0),
+      boosterCooldown: Number(cd.boosterCooldown || 0),
+      alcoholCooldown: Number(cd.alcoholCooldown || 0),
+      drugs: Object.fromEntries(Object.entries((cd.drugs||{})).map(([k,v])=>[k,Number(v||0)])),
+    };
+    return res.json({ cooldowns: summary });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN getPlayerCooldowns error:', err);
+    return res.status(500).json({ error: 'Failed to get cooldowns' });
+  }
+}
+
+// POST /api/admin/player/cooldowns/set { adminUserId, targetUserId, category, seconds }
+// category in ['drug','medical','booster','alcohol']
+async function setPlayerCooldown(req, res) {
+  try {
+    const { targetUserId, category } = req.body;
+    let { seconds } = req.body;
+    if (!targetUserId || !category) return res.status(400).json({ error: 'targetUserId and category are required' });
+    await getAdminPlayerFromReq(req);
+    const catMap = {
+      drug: 'cooldowns.drugCooldown',
+      medical: 'cooldowns.medicalCooldown',
+      booster: 'cooldowns.boosterCooldown',
+      alcohol: 'cooldowns.alcoholCooldown',
+    };
+    const path = catMap[category];
+    if (!path) return res.status(400).json({ error: 'Invalid category' });
+    seconds = Math.max(0, Number(seconds||0));
+    const player = await Player.findOneAndUpdate(
+      { user: targetUserId },
+      { $set: { [path]: seconds } },
+      { new: true }
+    ).lean();
+    if (!player) return res.status(404).json({ error: 'Target player not found' });
+    return res.json({ ok: true, [category+'Cooldown']: seconds });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN setPlayerCooldown error:', err);
+    return res.status(500).json({ error: 'Failed to set cooldown' });
+  }
+}
+
+// POST /api/admin/player/cooldowns/clear { adminUserId, targetUserId, scope? }
+// scope: 'all' | 'drug' | 'medical' | 'booster' | 'alcohol' | 'perDrug'
+async function clearPlayerCooldown(req, res) {
+  try {
+    const { targetUserId } = req.body;
+    let { scope } = req.body;
+    if (!targetUserId) return res.status(400).json({ error: 'targetUserId is required' });
+    await getAdminPlayerFromReq(req);
+    scope = scope || 'all';
+    const update = {};
+    if (scope === 'all' || scope === 'drug') update['cooldowns.drugCooldown'] = 0;
+    if (scope === 'all' || scope === 'medical') update['cooldowns.medicalCooldown'] = 0;
+    if (scope === 'all' || scope === 'booster') update['cooldowns.boosterCooldown'] = 0;
+    if (scope === 'all' || scope === 'alcohol') update['cooldowns.alcoholCooldown'] = 0;
+    if (scope === 'all' || scope === 'perDrug') update['cooldowns.drugs'] = {};
+    const player = await Player.findOneAndUpdate({ user: targetUserId }, { $set: update }, { new: true }).lean();
+    if (!player) return res.status(404).json({ error: 'Target player not found' });
+    return res.json({ ok: true, cleared: scope });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN clearPlayerCooldown error:', err);
+    return res.status(500).json({ error: 'Failed to clear cooldowns' });
+  }
+}
+
+// POST /api/admin/cooldowns/reset-all { adminUserId, includeNPC? }
+async function resetAllCooldowns(req, res) {
+  try {
+    await getAdminPlayerFromReq(req);
+    const includeNPC = String(req.body?.includeNPC).toLowerCase() === 'true' || req.body?.includeNPC === true;
+    const filter = includeNPC ? {} : { npc: { $ne: true } };
+    const update = {
+      $set: {
+        'cooldowns.medicalCooldown': 0,
+        'cooldowns.drugCooldown': 0,
+        'cooldowns.boosterCooldown': 0,
+        'cooldowns.alcoholCooldown': 0,
+        'cooldowns.drugs': {},
+      }
+    };
+    const result = await Player.updateMany(filter, update);
+    const matched = result.matchedCount ?? result.n ?? 0;
+    const modified = result.modifiedCount ?? result.nModified ?? 0;
+    return res.json({ matched, modified });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN resetAllCooldowns error:', err);
+    return res.status(500).json({ error: 'Failed to reset cooldowns' });
+  }
+}
+
+// ------------------------------
+// Database maintenance
+// ------------------------------
+
+// POST /api/admin/database/purge { adminUserId, confirm }
+async function purgeDatabase(req, res) {
+  try {
+    const admin = await getAdminPlayerFromReq(req);
+    if (admin.playerRole !== 'Developer') return res.status(403).json({ error: 'Only Developers can purge database' });
+    const confirm = String(req.body?.confirm || '');
+    if (confirm !== 'DROP') return res.status(400).json({ error: 'Confirmation required: set confirm to "DROP"' });
+    const conn = mongoose.connection;
+    if (!conn || !conn.db) return res.status(500).json({ error: 'No DB connection' });
+    const dbName = conn.db.databaseName;
+    await conn.dropDatabase();
+    return res.json({ ok: true, dropped: dbName });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN purgeDatabase error:', err);
+    return res.status(500).json({ error: 'Failed to purge database' });
+  }
+}

@@ -3,6 +3,7 @@
     <div class="brand">Nizzia City</div>
     <div class="spacer"></div>
     <div class="buttons">
+      <button v-if="isAdmin" @click="goAdmin" title="Admin">Admin</button>
       <!-- Wiki button -->
       <button @click="openWiki" title="Wiki">Wiki</button>
       <button @click="rules" title="Rules">Rules</button>
@@ -32,6 +33,15 @@ import { usePlayerStore } from '../stores/player'
 
 const router = useRouter()
 const store = usePlayerStore()
+const isAdmin = computed(() => {
+  // Check role from store or cached player
+  const role = store.player?.playerRole || (() => { try { return JSON.parse(localStorage.getItem('nc_player')||'null')?.playerRole } catch { return null } })()
+  return role === 'Admin' || role === 'Developer'
+})
+
+function goAdmin(){
+  router.push('/admin')
+}
 const hp = ref(0)
 
 // Ticker: simple rotation by default, with optional slow scroll

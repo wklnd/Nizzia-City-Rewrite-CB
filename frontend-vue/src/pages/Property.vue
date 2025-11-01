@@ -3,6 +3,23 @@
     <h2>Property</h2>
     <p class="muted">Your current home, upgrades, and upkeep.</p>
 
+    <div v-if="ownedSummary.length" class="u-mt-6">
+      <h3>Your Properties</h3>
+      <div class="owned-grid u-mt-4">
+        <div class="owned-card" v-for="o in ownedSummary" :key="o.id">
+          <div class="owned-media">
+            <img v-if="imageOkMap[o.id]" :src="imageUrl(o.id)" :alt="o.name" @error="() => (imageOkMap[o.id] = false)" />
+            <div v-else class="card__placeholder">{{ o.name }}</div>
+            <div class="owned-badge" v-if="o.count>1">×{{ o.count }}</div>
+          </div>
+          <div class="owned-body">
+            <div class="owned-title">{{ o.name }}</div>
+            <div class="owned-meta">Base Happiness Max: {{ o.baseHappyMax }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div v-if="loading" class="muted u-mt-6">Loading property…</div>
     <div v-else-if="error" class="error u-mt-6">{{ error }}</div>
 
@@ -58,6 +75,8 @@ const error = ref('')
 const home = ref(null)
 const imageOk = ref(true)
 const busy = ref(false)
+const catalog = ref([])
+const imageOkMap = ref({})
 
 const notEnoughMoney = computed(() => Number(store.player?.money||0) < Number(home.value?.upkeepDue||0))
 
@@ -81,6 +100,7 @@ const installed = computed(() => {
 })
 
 function fmt(n){ return Number(n||0).toLocaleString() }
+function imageUrl(id){ return `/assets/images/property_${id}.jpg` }
 
 async function loadHome(){
   if (!store.player?.user) return
@@ -96,6 +116,30 @@ async function loadHome(){
     loading.value = false
   }
 }
+
+async function loadCatalog(){
+  if (!store.player?.user) return
+  try {
+    const { data } = await api.get('/realestate/catalog', { params: { userId: store.player.user } })
+    catalog.value = data?.properties || []
+    const map = imageOkMap.value || {}
+    catalog.value.forEach(p => { if (!(p.id in map)) map[p.id] = true })
+    imageOkMap.value = map
+  } catch {}
+}
+
+const ownedSummary = computed(() => {
+  const map = new Map()
+  const defs = new Map(catalog.value.map(p => [p.id, p]))
+  const props = store.player?.properties || []
+  for (const e of props) {
+    const id = e.propertyId
+    const count = map.get(id)?.count || 0
+    const def = defs.get(id) || { id, name: id, baseHappyMax: 0 }
+    map.set(id, { id, name: def.name || id, baseHappyMax: def.baseHappyMax || 0, count: count + 1 })
+  }
+  return Array.from(map.values())
+})
 
 async function ensurePlayer(){
   if (store.player?.user) return
@@ -124,8 +168,8 @@ async function payUpkeep(){
   }
 }
 
-onMounted(async () => { await ensurePlayer(); await loadHome() })
-watch(() => store.player?.user, async (v, ov) => { if (v && v !== ov) await loadHome() })
+onMounted(async () => { await ensurePlayer(); await Promise.all([loadHome(), loadCatalog()]) })
+watch(() => store.player?.user, async (v, ov) => { if (v && v !== ov) { await loadHome(); await loadCatalog() } })
 </script>
 
 <style scoped>
@@ -154,4 +198,14 @@ watch(() => store.player?.user, async (v, ov) => { if (v && v !== ov) await load
 .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 .btn--primary { background: #335a3b; color: #a3d977; border-color: #335a3b; }
 .error { color: #ff7b7b; }
+
+/* Owned grid */
+.owned-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.owned-card { border: 1px solid var(--border, #2b2f38); border-radius: 10px; background: rgba(255,255,255,0.02); overflow: hidden; }
+.owned-media { position: relative; width: 100%; aspect-ratio: 16/9; background: #13161c; }
+.owned-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.owned-badge { position: absolute; right: 8px; top: 8px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border, #2b2f38); }
+.owned-body { padding: 8px; }
+.owned-title { font-weight: 600; }
+.owned-meta { font-size: 12px; color: var(--muted, #99a2b2); }
 </style>

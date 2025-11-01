@@ -48,7 +48,7 @@ const createItem = async (req, res) => {
     };
 
     // Per‐type additions
-    if (['medicine','alchool','enhancers','drugs'].includes(type)) {
+    if (['medicine','alchool','enhancers','drugs','cache'].includes(type)) {
       payload.effect = effect || {};
     }
     if (['alchool','drugs'].includes(type)) {

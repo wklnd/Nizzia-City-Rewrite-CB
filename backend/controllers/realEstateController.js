@@ -136,8 +136,8 @@ async function buyProperty(req, res){
     if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
     if (!player) player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
-    await ensureStarterProperty(player);
-    if (getOwnedEntry(player, propertyId)) return res.status(400).json({ error: 'Already owned' });
+  await ensureStarterProperty(player);
+  // Allow owning multiple of the same property; remove single-ownership restriction
     const cost = Number(def.cost||0);
     if (Number(player.money||0) < cost) return res.status(400).json({ error: 'Not enough money' });
     player.money = Number(player.money||0) - cost;
@@ -167,12 +167,16 @@ async function sellProperty(req, res){
     if (!player) return res.status(404).json({ error: 'Player not found' });
     await ensureStarterProperty(player);
     if (player.home === propertyId) return res.status(400).json({ error: 'Set a different home before selling this property' });
-    const entry = getOwnedEntry(player, propertyId);
-    if (!entry) return res.status(404).json({ error: 'Property not owned' });
-    const def = PROPERTIES[propertyId];
-    const refund = Math.floor((def.cost||0) * 0.5); // Assumption: 50% refund
-    player.money = Number(player.money||0) + refund;
-    player.properties = (player.properties||[]).filter(p => p.propertyId !== propertyId);
+  const entry = getOwnedEntry(player, propertyId);
+  if (!entry) return res.status(404).json({ error: 'Property not owned' });
+  const def = PROPERTIES[propertyId];
+  const refund = Math.floor((def.cost||0) * 0.5); // Assumption: 50% refund
+  player.money = Number(player.money||0) + refund;
+  // Remove only one instance of this propertyId
+  const arr = Array.from(player.properties || [])
+  const idx = arr.findIndex(p => p.propertyId === propertyId)
+  if (idx >= 0) arr.splice(idx, 1)
+  player.properties = arr
     await player.save();
     res.json({ ok: true, money: player.money, refund });
   } catch (e) {

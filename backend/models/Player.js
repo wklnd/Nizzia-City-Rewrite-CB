@@ -135,6 +135,11 @@ const playerSchema = new mongoose.Schema({
     }
   ],
   home: { type: String, default: 'trailer' },
+
+  // Crime-related state (per-location cooldowns and stats)
+  crime: {
+    last: { type: Map, of: Date, default: {} }, // key: location id, value: last attempt time
+  },
 });
 
 module.exports = mongoose.model('Player', playerSchema);
