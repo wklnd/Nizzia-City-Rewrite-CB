@@ -37,11 +37,13 @@ const applyItem = async (userOrPlayerId, itemId) => {
   const inferTypeFromItem = () => {
     if (item.type === 'drugs') return 'drug';
     if (item.type === 'enhancers') return 'booster';
-    if (item.type === 'medicine' || item.type === 'alchool') return 'medical';
+    if (item.type === 'medicine') return 'medical';
+    if (item.type === 'alchool') return 'alcohol'; // schema uses 'alchool'
     return '';
   };
   const cdType = (effect.cooldownType || inferTypeFromItem() || '').toLowerCase();
-  if (cdType === 'drug' || cdType === 'booster' || cdType === 'medical') {
+  // Only block on drug/medical; allow stacking for alcohol and booster
+  if (cdType === 'drug' || cdType === 'medical') {
     const key = cdType + 'Cooldown';
     const remaining = Number(player.cooldowns?.[key] || 0);
     if (remaining > 0) {
@@ -65,7 +67,15 @@ const applyItem = async (userOrPlayerId, itemId) => {
     const nMax = Number(player.nerveStats?.nerveMax ?? Infinity);
     const nMin = Number(player.nerveStats?.nerveMin ?? 0);
     const cur = Number(player.nerveStats?.nerve ?? 0);
-    const next = clamp(cur + Number(effect.nerve), nMin, nMax);
+    const delta = Number(effect.nerve);
+    const allowOvercap = (cdType === 'alcohol');
+    let next = cur + delta;
+    if (allowOvercap) {
+      // Overcap allowed: ensure not below min, but do not clamp to max
+      next = Math.max(nMin, next);
+    } else {
+      next = clamp(next, nMin, nMax);
+    }
     player.nerveStats.nerve = next;
   }
   if (typeof effect.happy === 'number') {
@@ -83,8 +93,13 @@ const applyItem = async (userOrPlayerId, itemId) => {
   if (cdType && Number(effect.cooldownSeconds) > 0) {
     const sec = Number(effect.cooldownSeconds);
     player.cooldowns = player.cooldowns || {};
-    const key = cdType + 'Cooldown';
-    player.cooldowns[key] = Number(player.cooldowns[key] || 0) + sec;
+    const key = (cdType === 'alcohol') ? 'alcoholCooldown' : (cdType + 'Cooldown');
+    // For alcohol and booster, allow stacking; this matches the desired behavior where
+    // e.g. 23:58 remaining + 1h drink -> 24:58 remaining. We simply add seconds.
+    // (Drug/medical only reach here when not blocked above.)
+    const existing = Number(player.cooldowns[key] || 0);
+    // Soft cap: allow totals to exceed 24h; they'll tick down naturally via cron
+    player.cooldowns[key] = existing + sec;
   }
 
   await player.save();
@@ -98,6 +113,15 @@ const applyItem = async (userOrPlayerId, itemId) => {
       drug: Number(player.cooldowns?.drugCooldown || 0),
       booster: Number(player.cooldowns?.boosterCooldown || 0),
       medical: Number(player.cooldowns?.medicalCooldown || 0),
+      alcohol: Number(player.cooldowns?.alcoholCooldown || 0),
+      drugs: (() => {
+        const map = player.cooldowns?.drugs;
+        if (!map) return {};
+        if (map instanceof Map) {
+          return Object.fromEntries(Array.from(map.entries()));
+        }
+        return map;
+      })(),
     }
   };
 };

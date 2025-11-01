@@ -1,6 +1,6 @@
 <template>
   <footer class="footer muted">
-    <span>© {{ year }} Nizzia City</span>
+    <span>© {{ year }} Nizzia City - Made with hate by Oscar</span>
   </footer>
 </template>
 

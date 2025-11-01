@@ -1,7 +1,15 @@
 <template>
   <aside class="sidebar">
-    <div class="status-effects">
-        <p>effect</p>
+    <div class="status-effects" v-if="effects.length">
+      <span
+        v-for="(e, i) in effects"
+        :key="i"
+        class="effect-icon"
+        :data-tip="e.title"
+        :title="e.title"
+        role="img"
+        :aria-label="e.title"
+      >{{ e.symbol }}</span>
     </div>
     <div class="info">
       <p id="ui-name">Name: {{ store.player?.name || '—' }}</p>
@@ -66,7 +74,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import api from '../api/client'
 import { usePlayerStore } from '../stores/player'
@@ -108,6 +116,80 @@ async function load(){
   }
 }
 
+// Effects: cooldowns, bank lock, stocks presence, drugs/booster active
+const bankUnlockAt = ref(null)
+const now = ref(Date.now())
+let timerId
+
+function tick(){ now.value = Date.now() }
+onMounted(() => { timerId = setInterval(tick, 1000) })
+onUnmounted(() => { if (timerId) clearInterval(timerId) })
+
+function formatDuration(sec){
+  if (!Number.isFinite(sec) || sec <= 0) return '0s'
+  let s = Math.floor(sec)
+  const d = Math.floor(s / 86400); s -= d*86400
+  const h = Math.floor(s / 3600); s -= h*3600
+  const m = Math.floor(s / 60); s -= m*60
+  const parts = []
+  if (d) parts.push(d + 'd')
+  if (h) parts.push(h + 'h')
+  if (m) parts.push(m + 'm')
+  if (parts.length === 0) parts.push(s + 's')
+  return parts.join(' ')
+}
+
+const hasStocks = computed(() => {
+  const pf = store.player?.portfolio || []
+  return pf.some(p => Number(p?.shares||0) > 0)
+})
+
+async function loadBank(){
+  try {
+    if (!user.value?._id) return
+    const { data } = await api.get(`/bank/accounts/${user.value._id}`)
+    const active = (data?.accounts||[]).filter(a => !a.isWithdrawn && new Date(a.endDate) > new Date())
+    if (active.length) {
+      // soonest unlock
+      active.sort((a,b)=> new Date(a.endDate) - new Date(b.endDate))
+      bankUnlockAt.value = new Date(active[0].endDate)
+    } else {
+      bankUnlockAt.value = null
+    }
+  } catch {}
+}
+
+const effects = computed(() => {
+  const arr = []
+  const cds = store.player?.cooldowns || {}
+  if (Number(cds.medicalCooldown||0) > 0) arr.push({ symbol: '🩹', title: `Medical cooldown • ${formatDuration(cds.medicalCooldown)}` })
+  // Drug cooldowns: aggregate across per-drug map or legacy single value
+  const drugMap = cds.drugs || {};
+  let drugCount = 0; let maxDrug = 0;
+  if (drugMap instanceof Map) {
+    for (const v of drugMap.values()) { const n=Number(v||0); if (n>0){drugCount++; maxDrug=Math.max(maxDrug,n);} }
+  } else {
+    for (const k in drugMap) { const n=Number(drugMap[k]||0); if (n>0){drugCount++; maxDrug=Math.max(maxDrug,n);} }
+  }
+  const legacyDrug = Number(cds.drugCooldown||0);
+  if (legacyDrug>0) { drugCount = Math.max(drugCount, 1); maxDrug = Math.max(maxDrug, legacyDrug); }
+  if (drugCount>0) arr.push({ symbol: '💊', title: `Drug cooldowns • ${drugCount} active • longest ${formatDuration(maxDrug)}` })
+  // Alcohol cooldown
+  if (Number(cds.alcoholCooldown||0) > 0) arr.push({ symbol: '🍺', title: `Alcohol cooldown • ${formatDuration(cds.alcoholCooldown)}` })
+  if (Number(cds.boosterCooldown||0) > 0) arr.push({ symbol: '⚡', title: `Booster active • ${formatDuration(cds.boosterCooldown)}` })
+  if (hasStocks.value) arr.push({ symbol: '📈', title: 'Stock holdings present' })
+  if (bankUnlockAt.value) {
+    const remainSec = Math.max(0, Math.floor((bankUnlockAt.value.getTime() - now.value)/1000))
+    arr.push({ symbol: '🏦', title: `Bank unlocks in • ${formatDuration(remainSec)}` })
+  }
+  return arr
+})
+
+onMounted(async () => {
+  await load()
+  await loadBank()
+})
+
 async function doDev(path, amount){
   devMsg.value = ''
   try {
@@ -126,4 +208,46 @@ onMounted(load)
 
 <style scoped>
 /* Styling comes from global layout.css */
+.status-effects { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; overflow: visible; }
+.effect-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px; height: 26px;
+  border-radius: 999px;
+  border: 1px solid var(--border, #2b2f38);
+  background: rgba(255,255,255,0.04);
+  font-size: 14px;
+  cursor: default;
+}
+.effect-icon::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 0;
+  right: auto;
+  top: calc(100% + 8px);
+  bottom: auto;
+  transform: none;
+  display: inline-block;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  min-width: 140px;
+  max-width: min(260px, 80vw);
+  background: var(--panel, #171a2b);
+  color: var(--text, #e8eaf6);
+  border: 1px solid var(--border, rgba(255,255,255,0.12));
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  line-height: 1;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 1000;
+}
+.effect-icon:hover::after { opacity: 1; }
 </style>

@@ -81,9 +81,15 @@ const playerSchema = new mongoose.Schema({
   addiction: {type: Number, default: 0 }, // This is the current value of addiction, increase with drugs
 
   cooldowns: {
-    medicalCooldown: { type: Number, default: 0 }, // This is the current value of medical cooldown, increase with drugs
-    drugCooldown: { type: Number, default: 0 }, // This is the current value of drug cooldown, increase with drugs
-    boosterCooldown: { type: Number, default: 0 }, // This is the current value of booster cooldown, increase with drugs
+    // Legacy aggregate cooldowns (kept for backward compatibility)
+    medicalCooldown: { type: Number, default: 0 },
+    drugCooldown: { type: Number, default: 0 },
+    boosterCooldown: { type: Number, default: 0 },
+    // New granular cooldowns
+    // Per-drug cooldowns keyed by Item.id (string), value in seconds remaining
+    drugs: { type: Map, of: Number, default: {} },
+    // Separate alcohol cooldown (seconds)
+    alcoholCooldown: { type: Number, default: 0 },
   },
 
   job: {

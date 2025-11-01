@@ -33,7 +33,7 @@
           <div class="card__meta">
             <div>Base Happiness Max: <strong>{{ p.baseHappyMax }}</strong></div>
             <div v-if="!p.owned">Cost: <strong>${{ formatNumber(p.cost) }}</strong></div>
-            <div v-else>Upgrades: <strong>{{ upgradeCount(p) }}</strong> / {{ p.upgradeCapacity ?? 3 }}</div>
+            <div v-else>Upgrades: <strong>{{ upgradeCount(p) }}</strong> / {{ capacity(p) }}</div>
           </div>
 
           <div v-if="p.owned" class="card__upgrades">
@@ -101,35 +101,35 @@ function formatNumber(n){
 }
 function upgradeCount(p){
   const u = p.upgrades || {}
-  return Object.values(u).reduce((a,b)=> a + (Number(b||0) > 0 ? 1 : 0), 0)
+  // Sum levels to match capacity = sum of limits
+  return Object.values(u).reduce((a,b)=> a + Number(b||0), 0)
+}
+function capacity(p){
+  if (typeof p.upgradeCapacity === 'number') return p.upgradeCapacity
+  const limits = p.upgradeLimits || {}
+  return Object.values(limits).reduce((a,b)=> a + Number(b||0), 0)
 }
 
-// Mirror backend upgrade names and level-1 costs for display
-const UPGRADE_NAMES = {
-  hot_tub: 'Hot Tub',
-  home_theater: 'Home Theater',
-  garden: 'Zen Garden',
-  vault: 'Secure Vault',
-}
-const UPGRADE_COSTS_L1 = {
-  hot_tub: 250000,
-  home_theater: 500000,
-  garden: 150000,
-  vault: 1000000,
+function humanizeUpgradeId(id){
+  if (!id) return ''
+  return String(id).split('_').map(w => w ? w[0].toUpperCase() + w.slice(1) : w).join(' ')
 }
 
 function installedUpgrades(p){
   const up = p.upgrades || {}
+  const names = p.upgradeNames || {}
   return Object.entries(up)
     .filter(([, level]) => Number(level||0) > 0)
-    .map(([id]) => ({ id, name: UPGRADE_NAMES[id] || id }))
+    .map(([id]) => ({ id, name: names[id] || humanizeUpgradeId(id) }))
 }
 function availableUpgrades(p){
   const limits = p.upgradeLimits || {}
   const up = p.upgrades || {}
+  const names = p.upgradeNames || {}
+  const costs = p.upgradeCosts || {}
   return Object.keys(limits)
     .filter((id) => Number(up[id]||0) < Number(limits[id]||1))
-    .map((id) => ({ id, name: UPGRADE_NAMES[id] || id, cost: UPGRADE_COSTS_L1[id] || 0 }))
+    .map((id) => ({ id, name: names[id] || humanizeUpgradeId(id), cost: costs[id] || 0 }))
 }
 
 const filtered = computed(() => showOwnedOnly.value ? catalog.value.filter(p => p.owned) : catalog.value)

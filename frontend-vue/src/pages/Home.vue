@@ -57,6 +57,9 @@
               </div>
               <div v-else class="property-card__empty">No upgrades installed yet</div>
             </div>
+            <div class="property-card__actions">
+              <RouterLink to="/property" class="btn btn--primary">Manage Property</RouterLink>
+            </div>
           </div>
         </div>
       </InfoBox>
@@ -88,19 +91,17 @@ const homeLoading = ref(false)
 const homeError = ref('')
 const imageOk = ref(true)
 
-// Map backend upgrade ids to friendly names
-const UPGRADE_NAMES = {
-  hot_tub: 'Hot Tub',
-  home_theater: 'Home Theater',
-  garden: 'Zen Garden',
-  vault: 'Secure Vault',
+function humanizeUpgradeId(id){
+  if (!id) return ''
+  return String(id).split('_').map(w => w ? w[0].toUpperCase() + w.slice(1) : w).join(' ')
 }
 
 const installedUpgrades = computed(() => {
   const up = home.value?.upgrades || {}
+  const names = home.value?.upgradeNames || {}
   return Object.entries(up)
     .filter(([, level]) => Number(level || 0) > 0)
-    .map(([id]) => ({ id, name: UPGRADE_NAMES[id] || id }))
+    .map(([id]) => ({ id, name: names[id] || humanizeUpgradeId(id) }))
 })
 
 async function loadHome() {
@@ -205,6 +206,10 @@ watch(() => store.player?.home, () => loadHome())
   font-size: 0.85rem;
   color: var(--muted, #99a2b2);
 }
+
+.property-card__actions { margin-top: 8px; }
+.btn { border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.06); padding: 6px 10px; border-radius: 8px; cursor: pointer; color: var(--text, #e8eaf6); text-decoration: none; display: inline-block; }
+.btn--primary { background: #335a3b; color: #a3d977; border-color: #335a3b; }
 
 .property-card__loading, .property-card__error {
   grid-column: 1 / -1;

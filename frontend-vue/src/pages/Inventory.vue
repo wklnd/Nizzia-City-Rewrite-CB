@@ -28,13 +28,18 @@
         </div>
         <div class="item-type">{{ labelForType(entry.item.type) }}</div>
         <div class="desc" v-if="entry.item.description">{{ entry.item.description }}</div>
+        <div class="cooldown" v-if="cooldownHours(entry.item) !== null">
+          Cooldown: <strong>{{ cooldownHours(entry.item) }}h</strong>
+        </div>
         <div class="card__actions">
           <button
             class="btn btn--primary"
             :disabled="!entry.item.usable || busy"
             @click="useOne(entry)"
           >Use</button>
-          <button class="btn" disabled>Sell (soon)</button>
+          <button class="btn btn--secondary" :disabled="true">Send (soon)</button>
+          <button class="btn" :disabled="true">Trash (soon)</button>
+
         </div>
       </div>
       <div v-if="!error && filtered.length === 0" class="empty muted">No items here</div>
@@ -162,28 +167,37 @@ async function useOne(entry){
 onMounted(async () => { await ensurePlayer(); await loadInventory() })
 watch(() => store.player?.user, async (v, ov) => { if (v && v !== ov) await loadInventory() })
 
+function cooldownHours(item){
+  const sec = Number(item?.effect?.cooldownSeconds || 0)
+  if (!Number.isFinite(sec) || sec <= 0) return null
+  const hours = sec / 3600
+  if (hours >= 10) return Math.round(hours)
+  return Math.round(hours * 10) / 10
+}
+
 </script>
 
 <style scoped>
 .toolbar { display: flex; align-items: center; gap: 12px; }
 .spacer { flex: 1; }
 .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.tab { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.03); cursor: pointer; }
-.tab--active { background: #2563eb; color: white; border-color: #1d4ed8; }
+.tab { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.03); cursor: pointer; color: var(--text, #e8eaf6); }
+.tab--active { background: #263b2a; color: #a3d977; border-color: #335a3b; }
 .count { margin-left: 6px; opacity: 0.8; font-size: 0.85em; }
 .search { border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 8px; min-width: 180px; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.card { border: 1px solid var(--border, #2b2f38); border-radius: 10px; background: rgba(255,255,255,0.02); padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.card { border: 1px solid var(--border, #2b2f38); border-radius: 10px; background: var(--panel, #171a2b); padding: 12px; display: flex; flex-direction: column; gap: 6px; }
 .card__head { display: flex; justify-content: space-between; align-items: baseline; }
-.item-name { font-weight: 600; }
-.qty { color: var(--muted, #99a2b2); }
-.item-type { font-size: 0.85rem; color: var(--muted, #99a2b2); }
-.desc { font-size: 0.95rem; color: #c8d0e0; }
+.item-name { font-weight: 600; color: var(--text, #e8eaf6); }
+.qty { color: var(--text, #e8eaf6); opacity: 0.85; }
+.item-type { font-size: 0.85rem; color: var(--text, #e8eaf6); opacity: 0.8; }
+.desc { font-size: 0.95rem; color: var(--text, #e8eaf6); opacity: 0.95; }
+.cooldown { font-size: 0.9rem; color: var(--text, #e8eaf6); opacity: 0.9; }
 .card__actions { display: flex; gap: 8px; margin-top: 6px; }
-.btn { border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.03); padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.btn { border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.06); padding: 6px 10px; border-radius: 8px; cursor: pointer; color: var(--text, #e8eaf6); }
 .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
-.btn--primary { background: #2563eb; color: white; border-color: #1d4ed8; }
+.btn--primary { background: #335a3b; color: #a3d977; border-color: #335a3b; }
 
 .error { color: #ff7b7b; }
 .empty { grid-column: 1 / -1; padding: 12px; }

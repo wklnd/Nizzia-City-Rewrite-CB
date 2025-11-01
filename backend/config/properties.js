@@ -1,5 +1,8 @@
 // Property catalog and upgrades
-// Each property defines cost, baseHappyMax, and upgrade limits
+// Simple, extensible structure:
+// - market: set to false to hide from the public real estate market (still usable if owned/admin-granted)
+// - upgradeLimits: id -> max level allowed for this property
+//   Capacity is derived as the sum of all limits; no separate upgradeCapacity field needed
 
 const PROPERTIES = {
   trailer: {
@@ -8,7 +11,6 @@ const PROPERTIES = {
     cost: 0,
     upkeep: 250,
     baseHappyMax: 150,
-    upgradeCapacity: 3,
     upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
   },
   apartment: {
@@ -17,7 +19,6 @@ const PROPERTIES = {
     cost: 250000,
     upkeep: 2500,
     baseHappyMax: 200,
-    upgradeCapacity: 3,
     upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
   },
   house: {
@@ -26,7 +27,6 @@ const PROPERTIES = {
     cost: 2500000,
     upkeep: 10000,
     baseHappyMax: 300,
-    upgradeCapacity: 3,
     upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
   },
   villa: {
@@ -35,7 +35,6 @@ const PROPERTIES = {
     cost: 50000000,
     upkeep: 50000,
     baseHappyMax: 500,
-    upgradeCapacity: 3,
     upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
   },
   private_island: {
@@ -44,7 +43,6 @@ const PROPERTIES = {
     cost: 500000000,
     upkeep: 100000,
     baseHappyMax: 2000,
-    upgradeCapacity: 3,
     upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
   },
   silo: {
@@ -53,8 +51,8 @@ const PROPERTIES = {
     cost: 5000000000,
     upkeep: 1000000,
     baseHappyMax: 8000,
-    upgradeCapacity: 3,
-    upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
+    market: false, // hidden from market; obtainable via special means
+    upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1, security_system: 3 },
   },
 };
 
@@ -84,13 +82,19 @@ const UPGRADES = {
     name: 'Secure Vault',
     cost: (level) => 1000000 * level,
     bonus: (level) => ({happyMax: 2500 * level }),
-    },
+  },
   airstrip: {
     id: 'airstrip',
     name: 'Airstrip',
     cost: (level) => 90000000 * level,
     bonus: (level) => ({happyMax: 5500 * level }),
-    },
+  },
+  security_system: {
+    id: 'security_system',
+    name: 'Security System',
+    cost: (level) => 7500000 * level,
+    bonus: (level) => ({ happyMax: 100 * level }),
+  },
 
     
 };

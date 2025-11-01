@@ -24,6 +24,12 @@ const regenEnergy = async () => {
 const scheduleRegenEnergy = () => {
   cron.schedule('*/10 * * * *', () => {
     console.log('Running scheduled energy regeneration...');
+    try {
+      if (mongoose.connection.readyState !== 1) {
+        console.warn('Skipping energy regen: DB not connected');
+        return;
+      }
+    } catch (_) {}
     regenEnergy();
   });
 };

@@ -23,6 +23,12 @@ const regenHappiness = async () => {
 const scheduleRegenHappiness = () => {
   cron.schedule('*/5 * * * *', () => {
     console.log('Running scheduled happiness regeneration...');
+    try {
+      if (mongoose.connection.readyState !== 1) {
+        console.warn('Skipping happiness regen: DB not connected');
+        return;
+      }
+    } catch (_) {}
     regenHappiness();
   });
 };

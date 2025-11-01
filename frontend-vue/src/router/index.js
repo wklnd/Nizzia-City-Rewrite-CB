@@ -16,6 +16,9 @@ const HallOfFame = () => import('../pages/HallOfFame.vue')
 const RealEstate = () => import('../pages/RealEstate.vue')
 const Admin = () => import('../pages/Admin.vue')
 const News = () => import('../pages/News.vue')
+const Rules = () => import('../pages/Rules.vue')
+const Credits = () => import('../pages/Credits.vue')
+
 
 // Auth
 const Login = () => import('../pages/auth/Login.vue')

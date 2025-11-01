@@ -23,6 +23,12 @@ const regenNerve = async () => {
 const scheduleRegenNerve = () => {
   cron.schedule('*/5 * * * *', () => {
     console.log('Running scheduled nerve regeneration...');
+    try {
+      if (mongoose.connection.readyState !== 1) {
+        console.warn('Skipping nerve regen: DB not connected');
+        return;
+      }
+    } catch (_) {}
     regenNerve();
   });
 };

@@ -26,4 +26,10 @@ module.exports = [
   "Inbecile",
   "Nerd",
   "Unlucky",
+  "Nudist",
+  "Cleptomaniac",
+  "Couch Potato",
+  "Fashionista",
+  "Gamer",
+  "Bookworm",
 ];

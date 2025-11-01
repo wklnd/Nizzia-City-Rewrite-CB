@@ -1,6 +1,14 @@
 const Player = require('../models/Player');
 const { PROPERTIES, UPGRADES } = require('../config/properties');
 
+function humanizeId(id) {
+  if (!id || typeof id !== 'string') return String(id || '');
+  return id
+    .split('_')
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
 function getOwnedEntry(player, propertyId){
   return (player.properties || []).find(p => p.propertyId === propertyId) || null;
 }
@@ -68,7 +76,10 @@ async function getCatalog(req, res){
     if (!player) return res.status(404).json({ error: 'Player not found' });
     await ensureStarterProperty(player);
     const owned = new Set((player.properties||[]).map(p => p.propertyId));
-    const catalog = Object.values(PROPERTIES).map(p => {
+    const catalog = Object.values(PROPERTIES)
+      // Hide properties from market unless already owned
+      .filter(p => (p.market !== false) || owned.has(p.id))
+      .map(p => {
       const entry = (player.properties||[]).find(pp => pp.propertyId === p.id);
       // Normalize upgrades to plain object with numeric levels
       let upgrades = {};
@@ -79,14 +90,31 @@ async function getCatalog(req, res){
           Object.entries(entry.upgrades).forEach(([k,v])=>{ upgrades[k] = Number(v||0); });
         }
       }
+      // Build upgrade metadata for frontend (names and next-level costs)
+      const upgradeNames = {};
+      const upgradeCosts = {};
+      Object.keys(p.upgradeLimits || {}).forEach((uId) => {
+        const uDef = UPGRADES[uId];
+        upgradeNames[uId] = uDef?.name || humanizeId(uId);
+        const current = Number(upgrades[uId] || 0);
+        const limit = Number(p.upgradeLimits[uId] || 1);
+        const nextLevel = current + 1;
+        if (nextLevel <= limit) {
+          const cost = typeof uDef?.cost === 'function' ? Number(uDef.cost(nextLevel) || 0) : 0;
+          upgradeCosts[uId] = cost;
+        }
+      });
+      const upgradeCapacity = Object.values(p.upgradeLimits || {}).reduce((a,b)=>a + Number(b||0), 0);
       return {
         id: p.id,
         name: p.name,
         cost: p.cost,
         baseHappyMax: p.baseHappyMax,
-        upgradeCapacity: p.upgradeCapacity,
+        upgradeCapacity,
         upgradeLimits: p.upgradeLimits,
         upgrades,
+        upgradeNames,
+        upgradeCosts,
         owned: owned.has(p.id),
         active: player.home === p.id,
       };
@@ -101,8 +129,9 @@ async function buyProperty(req, res){
   try {
     const { userId, propertyId, setActive } = req.body;
     if (!userId || !propertyId) return res.status(400).json({ error: 'userId and propertyId are required' });
-    const def = PROPERTIES[propertyId];
+  const def = PROPERTIES[propertyId];
     if (!def) return res.status(400).json({ error: 'Invalid propertyId' });
+  if (def.market === false) return res.status(400).json({ error: 'This property is not available on the market' });
     let player = null; const n = Number(userId);
     if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
     if (!player) player = await Player.findOne({ user: userId });
@@ -190,16 +219,17 @@ async function buyUpgrade(req, res){
     const upDef = UPGRADES[upgradeId];
     if (!upDef) return res.status(400).json({ error: 'Invalid upgradeId' });
 
-    // Current level (treat upgrades as one-time purchases)
+    // Current level (support multi-level up to property limit)
     let currentLevel = 0;
     if (entry.upgrades) {
       if (typeof entry.upgrades.get === 'function') currentLevel = Number(entry.upgrades.get(upgradeId) || 0);
       else currentLevel = Number(entry.upgrades[upgradeId] || 0);
     }
-    if (currentLevel >= 1) return res.status(400).json({ error: 'Upgrade already purchased' });
+    const limit = Number(propDef.upgradeLimits?.[upgradeId] || 1);
+    if (currentLevel >= limit) return res.status(400).json({ error: 'Upgrade is at max level' });
 
-    const nextLevel = 1;
-    const cost = Number(upDef.cost(1) || 0);
+    const nextLevel = currentLevel + 1;
+    const cost = Number(upDef.cost(nextLevel) || 0);
     if (Number(player.money||0) < cost) return res.status(400).json({ error: 'Not enough money' });
 
     // Deduct funds and apply level
@@ -221,7 +251,7 @@ async function buyUpgrade(req, res){
     }
 
     await player.save();
-    res.json({ ok: true, money: player.money, level: nextLevel, happyMax: player.happiness.happyMax, happy: player.happiness.happy });
+  res.json({ ok: true, money: player.money, level: nextLevel, happyMax: player.happiness.happyMax, happy: player.happiness.happy });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
@@ -245,11 +275,18 @@ async function getHome(req, res){
       else Object.entries(entry.upgrades).forEach(([k,v])=>{ upgrades[k]=Number(v||0); });
     }
     const image = `/assets/images/property_${homeId}.jpg`;
+    // Provide upgrade names for installed/available upgrades
+    const upgradeNames = {};
+    Object.keys(def?.upgradeLimits || {}).forEach((uId) => {
+      const uDef = UPGRADES[uId];
+      upgradeNames[uId] = uDef?.name || humanizeId(uId);
+    });
     res.json({
       id: homeId,
       name: def?.name || homeId,
       image,
       upgrades,
+      upgradeNames,
       upkeep: Number(def?.upkeep || 0),
       upkeepDue: Number(entry?.upkeepDue || 0),
       lastUpkeepPaidAt: entry?.lastUpkeepPaidAt || null,
