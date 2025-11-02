@@ -22,6 +22,7 @@ const {
   setPlayerStatus,
   setPlayerTitle,
   setPlayerRole,
+  setPlayerName,
   listPlayerTitles,
   setAddiction,
   // cooldowns
@@ -65,6 +66,7 @@ router.get('/player/titles', listPlayerTitles);
 router.patch('/player/status', setPlayerStatus);
 router.patch('/player/title', setPlayerTitle);
 router.patch('/player/role', setPlayerRole);
+router.patch('/player/name', setPlayerName);
 router.patch('/player/addiction', setAddiction);
 // Player cooldowns
 router.get('/player/cooldowns/:userId', getPlayerCooldowns);

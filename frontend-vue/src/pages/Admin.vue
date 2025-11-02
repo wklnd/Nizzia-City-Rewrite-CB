@@ -82,6 +82,21 @@
       </div>
     </div>
 
+    <!-- Identity -->
+    <div class="card" v-if="profile">
+      <h3>Identity</h3>
+      <div class="row">
+        <div>
+          <label>New Name</label>
+          <input v-model.trim="newName" placeholder="3-32 chars" />
+        </div>
+      </div>
+      <div class="actions">
+        <button @click="applyName">Set Name</button>
+        <span class="muted">Changing name does not affect numeric ID.</span>
+      </div>
+    </div>
+
     <!-- Moderation -->
     <div class="card">
       <h3>Moderation</h3>
@@ -486,6 +501,7 @@ const adminUserId = ref('')
 const targetPlayerId = ref('')
 const targetUserId = ref('')
 const profile = ref(null)
+const newName = ref('')
 
 const searchQuery = ref('')
 const searchResults = ref([])
@@ -587,11 +603,13 @@ async function onLoadPlayer(){
     localStorage.setItem('nc_target_uid', match.userId)
     targetPlayerId.value = String(pid)
     localStorage.setItem('nc_target_pid', String(pid))
-    const prof = await api.get(`/player/profile/${pid}`)
-    profile.value = prof.data || prof
+  const prof = await api.get(`/player/profile/${pid}`)
+  profile.value = prof.data || prof
     modStatus.value = profile.value.playerStatus || 'Active'
     modRole.value = profile.value.playerRole || 'Player'
     if (titles.value.includes(profile.value.playerTitle)) modTitle.value = profile.value.playerTitle
+  // prefill identity editor
+  newName.value = String(profile.value.name || '')
     // prefill battle/work stat editors
     const bs = profile.value.battleStats || {}
     battle.value = { strength: Number(bs.strength||0), speed: Number(bs.speed||0), dexterity: Number(bs.dexterity||0), defense: Number(bs.defense||0) }
@@ -625,6 +643,19 @@ function ensureTarget(){
   const t = targetUserId.value?.trim()
   if (!t) throw new Error('Please load/select a target player first')
   return t
+}
+
+async function applyName(){
+  try {
+    const t = ensureTarget()
+    const name = newName.value?.trim()
+    if (!name) throw new Error('Enter a name (3-32 chars)')
+    const body = { targetUserId: t, name }
+    if (adminUserId.value) body.adminUserId = adminUserId.value
+    const res = await api.patch('/admin/player/name', body)
+    if (profile.value) profile.value.name = res.data?.name || name
+    alert('Name updated')
+  } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
 }
 
 // Admin actions

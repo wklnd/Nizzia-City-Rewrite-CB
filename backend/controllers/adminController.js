@@ -459,6 +459,7 @@ module.exports = {
   adjustResources,
   setBattleStats,
   setWorkStats,
+  setPlayerName,
   inventoryAdd,
   inventoryRemove,
   stocksAdd,
@@ -487,6 +488,27 @@ module.exports = {
 // ------------------------------
 // Moderation & metadata
 // ------------------------------
+
+// PATCH /api/admin/player/name { adminUserId, targetUserId, name }
+async function setPlayerName(req, res) {
+  try {
+    const { targetUserId, name } = req.body;
+    if (!targetUserId || !name) return res.status(400).json({ error: 'targetUserId and name are required' });
+    await getAdminPlayerFromReq(req);
+    const trimmed = String(name).trim();
+    if (trimmed.length < 3 || trimmed.length > 32) return res.status(400).json({ error: 'Name must be 3-32 characters' });
+    const player = await Player.findOne({ user: targetUserId });
+    if (!player) return res.status(404).json({ error: 'Target player not found' });
+    player.name = trimmed;
+    await player.save();
+    return res.json({ name: player.name });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN setPlayerName error:', err);
+    return res.status(500).json({ error: 'Failed to set name' });
+  }
+}
 
 // PATCH /api/admin/stats/battle { adminUserId, targetUserId, strength?, speed?, dexterity?, defense? }
 async function setBattleStats(req, res) {
