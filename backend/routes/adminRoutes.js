@@ -6,6 +6,8 @@ const {
   adjustExp,
   setLevel,
   adjustResources,
+  setBattleStats,
+  setWorkStats,
   inventoryAdd,
   inventoryRemove,
   stocksAdd,
@@ -39,6 +41,8 @@ router.patch('/currency', adjustCurrency);
 router.patch('/xp', adjustExp);
 router.patch('/level', setLevel);
 router.patch('/resources', adjustResources);
+router.patch('/stats/battle', setBattleStats);
+router.patch('/stats/work', setWorkStats);
 
 // Inventory
 router.post('/inventory/add', inventoryAdd);

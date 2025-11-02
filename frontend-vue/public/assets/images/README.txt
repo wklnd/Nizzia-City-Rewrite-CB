@@ -18,3 +18,6 @@ Recommendations:
 
 These images are served statically by Vite from the public/ directory and referenced in code as:
   /assets/images/property_<id>.jpg
+
+
+// This part has been generated using AI. errors may occur. 

@@ -121,6 +121,8 @@ const playerSchema = new mongoose.Schema({
     lastSpinAt: { type: Date, default: null },
     // Per-wheel last spin times; key is wheel id (e.g., 'wheelLame')
     lastSpins: { type: Map, of: Date, default: {} },
+    casinoSelfExclusionTime: { type: Date, default: null },
+    casinoSelfExclusion: { type: Boolean, default: false },
   },
 
   // Real estate: owned properties and current home
@@ -135,6 +137,14 @@ const playerSchema = new mongoose.Schema({
     }
   ],
   home: { type: String, default: 'trailer' },
+
+  // Gym progression: unlocked gyms and selected gym
+  gym: {
+    unlocked: { type: [Number], default: [1] }, // default unlock first gym
+    selectedGymId: { type: Number, default: 1 },
+    energySpent: { type: Number, default: 0 }, // cumulative energy spent training
+  },
+
 
   // Crime-related state (per-location cooldowns and stats)
   crime: {

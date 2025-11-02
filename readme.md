@@ -8,6 +8,8 @@ Nizzia City is a rundown, crime-ridden city where players can immerse themselves
 - Player Profiles: Each player has a profile with stats, inventory, and achievements.
 - Casino System: Players can try their luck at the casino with various games and rewards.
 - Item Management: Players can acquire, use, and trade items.
+- Pet Store: Players can buy and manage a single pet that grants bonuses (e.g., happiness). Pets live in your current property.
+- Item Market: Player-to-player marketplace to list items for sale, browse listings, buy, and cancel.
 - Admin Panel: A dedicated interface for administrators to manage the game.
 - Real-time Updates: Dynamic updates to player stats and game events.
 - Cooldown System: Certain actions have cooldown periods to enhance gameplay balance.
@@ -41,6 +43,22 @@ The frontend is built with Vue.js 3 and uses:
 5. Start the frontend development server with `npm run dev` in the `frontend-vue` directory.
 6. Access the application at `http://localhost:5173` in your web browser.
 
+### Item Market
+- UI: In the Vue app, open City and click the "Market" (🛒) POI, or use the sidebar link to "/market".
+- Actions supported:
+    - Create listing: pick an item from your inventory, set quantity and unit price.
+    - Browse and buy: filter listings by name and purchase quantities up to the available amount.
+    - Manage: view your active listings and cancel them to return remaining items to your inventory.
+- API endpoints (mounted under `/api/market`):
+    - `GET /market/listings` — Optional query params: `itemId`, `sellerId` (playerId or user id). Returns `{ listings: [...] }`.
+    - `POST /market/list` — Body: `{ userId, itemId, qty, price }`. Deducts inventory and creates a listing.
+    - `POST /market/buy` — Body: `{ userId, listingId, qty }`. Transfers money and items; deletes listing when empty.
+    - `POST /market/cancel` — Body: `{ userId, listingId }`. Returns remaining stock to seller and removes listing.
+
+Notes
+- `userId` accepts either a Player `id` (number) or the `user` ObjectId string; the backend resolves both forms.
+- Listings store `itemId` (the custom item key), and inventory references the Item document `_id`.
+
 ### Database
 The application uses MongoDB as its database. Ensure you have a MongoDB instance running and properly
 configured in your `.env` file.
@@ -51,6 +69,8 @@ Contributing is not currently open, but all contributions will be considered in 
 
 
 ### Upcoming Features
+- Pet Minigames
+    - Expand pets with activities (training, tricks, competitions) that provide additional bonuses and fun progression.
 - The Job Update 
     - The job system allows players to work in various professions to earn money and gain experience. It also allows players to create their own companies, hire employees, and manage business operations. If the company does well, it even can be listed on the in-game stock market for players to invest in.
 	Each Job allows players to gain stats and job points, which can be used to gain perks and bonuses related to their profession.

@@ -175,7 +175,7 @@ watch(() => store.player?.user, async (v, ov) => { if (v && v !== ov) { await lo
 <style scoped>
 .prop { margin-top: 12px; }
 .card { border: 1px solid var(--border, #2b2f38); border-radius: 10px; overflow: hidden; background: rgba(255,255,255,0.02); }
-.card__media { width: 100%; aspect-ratio: 16/9; background: #13161c; }
+.card__media { width: 100%; max-width: 720px; margin: 0 auto; aspect-ratio: 16/9; background: #13161c; border-radius: 10px; overflow: hidden; }
 .card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .card__placeholder { width: 100%; height: 100%; display:flex; align-items:center; justify-content:center; color: var(--muted, #99a2b2); }
 .card__body { padding: 12px; display:flex; flex-direction: column; gap: 8px; }

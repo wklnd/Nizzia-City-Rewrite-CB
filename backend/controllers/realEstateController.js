@@ -1,5 +1,7 @@
 const Player = require('../models/Player');
-const { PROPERTIES, UPGRADES } = require('../config/properties');
+const { UPGRADES } = require('../config/properties');
+const propertyService = require('../services/propertyService');
+const petService = require('../services/petService');
 
 function humanizeId(id) {
   if (!id || typeof id !== 'string') return String(id || '');
@@ -21,9 +23,9 @@ function sumUpgradeLevels(upgrades){
   return Object.values(upgrades).reduce((a,b)=>a+Number(b||0),0);
 }
 
-function computeHappyMaxFor(player){
+function computeHappyMaxFor(player, PROPS, extraHappyBonus = 0){
   const homeId = player.home || 'trailer';
-  const base = PROPERTIES[homeId]?.baseHappyMax || player.happiness?.happyMax || 150;
+  const base = PROPS[homeId]?.baseHappyMax || player.happiness?.happyMax || 150;
   const entry = getOwnedEntry(player, homeId);
   let bonus = 0;
   const upgrades = entry?.upgrades;
@@ -40,16 +42,16 @@ function computeHappyMaxFor(player){
       bonus += Number(inc||0);
     }
   });
-  return base + bonus;
+  return base + bonus + Number(extraHappyBonus || 0);
 }
 
-async function ensureStarterProperty(player){
+async function ensureStarterProperty(player, PROPS){
   if (!player.properties || player.properties.length === 0) {
     player.properties = [{ propertyId: 'trailer', upgrades: {}, acquiredAt: new Date() }];
   }
   if (!player.home) player.home = 'trailer';
   // Ensure happyMax is at least base for the home
-  const newMax = computeHappyMaxFor(player);
+  const newMax = computeHappyMaxFor(player, PROPS, 0);
   if (player.happiness) {
     player.happiness.happyMax = newMax;
     if (typeof player.happiness.happy === 'number') {
@@ -66,6 +68,7 @@ function resolvePlayerByAny(req){
 
 async function getCatalog(req, res){
   try {
+    const PROPS = await propertyService.getCatalog();
     const userId = resolvePlayerByAny(req);
     let player = null;
     if (userId) {
@@ -74,9 +77,11 @@ async function getCatalog(req, res){
       if (!player) player = await Player.findOne({ user: userId });
     }
     if (!player) return res.status(404).json({ error: 'Player not found' });
-    await ensureStarterProperty(player);
+    await ensureStarterProperty(player, PROPS);
+    // Include pet happiness bonus when reporting stats
+    const petBonus = await petService.getHappyBonusForUser(player.user);
     const owned = new Set((player.properties||[]).map(p => p.propertyId));
-    const catalog = Object.values(PROPERTIES)
+    const catalog = Object.values(PROPS)
       // Hide properties from market unless already owned
       .filter(p => (p.market !== false) || owned.has(p.id))
       .map(p => {
@@ -119,7 +124,9 @@ async function getCatalog(req, res){
         active: player.home === p.id,
       };
     });
-    res.json({ properties: catalog, home: player.home, money: player.money });
+    // Compute effective happy max for the active home
+    const happyMax = computeHappyMaxFor(player, PROPS, petBonus);
+    res.json({ properties: catalog, home: player.home, money: player.money, happyMax });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
@@ -128,15 +135,16 @@ async function getCatalog(req, res){
 async function buyProperty(req, res){
   try {
     const { userId, propertyId, setActive } = req.body;
+    const PROPS = await propertyService.getCatalog();
     if (!userId || !propertyId) return res.status(400).json({ error: 'userId and propertyId are required' });
-  const def = PROPERTIES[propertyId];
+  const def = PROPS[propertyId];
     if (!def) return res.status(400).json({ error: 'Invalid propertyId' });
   if (def.market === false) return res.status(400).json({ error: 'This property is not available on the market' });
     let player = null; const n = Number(userId);
     if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
     if (!player) player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
-  await ensureStarterProperty(player);
+  await ensureStarterProperty(player, PROPS);
   // Allow owning multiple of the same property; remove single-ownership restriction
     const cost = Number(def.cost||0);
     if (Number(player.money||0) < cost) return res.status(400).json({ error: 'Not enough money' });
@@ -145,7 +153,8 @@ async function buyProperty(req, res){
     if (setActive) player.home = propertyId;
     // Recompute happiness max if active changed
     if (setActive) {
-      const newMax = computeHappyMaxFor(player);
+      const petBonus = await petService.getHappyBonusForUser(player.user);
+      const newMax = computeHappyMaxFor(player, PROPS, petBonus);
       player.happiness.happyMax = newMax;
       player.happiness.happy = Math.min(player.happiness.happy, newMax);
     }
@@ -159,17 +168,18 @@ async function buyProperty(req, res){
 async function sellProperty(req, res){
   try {
     const { userId, propertyId } = req.body;
+    const PROPS = await propertyService.getCatalog();
     if (!userId || !propertyId) return res.status(400).json({ error: 'userId and propertyId are required' });
     if (propertyId === 'trailer') return res.status(400).json({ error: 'Cannot sell your starter trailer' });
     let player = null; const n = Number(userId);
     if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
     if (!player) player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
-    await ensureStarterProperty(player);
+    await ensureStarterProperty(player, PROPS);
     if (player.home === propertyId) return res.status(400).json({ error: 'Set a different home before selling this property' });
   const entry = getOwnedEntry(player, propertyId);
   if (!entry) return res.status(404).json({ error: 'Property not owned' });
-  const def = PROPERTIES[propertyId];
+  const def = PROPS[propertyId];
   const refund = Math.floor((def.cost||0) * 0.5); // Assumption: 50% refund
   player.money = Number(player.money||0) + refund;
   // Remove only one instance of this propertyId
@@ -192,11 +202,12 @@ async function setActiveProperty(req, res){
     if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
     if (!player) player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
-    await ensureStarterProperty(player);
+    await ensureStarterProperty(player, await propertyService.getCatalog());
     const entry = getOwnedEntry(player, propertyId);
     if (!entry) return res.status(404).json({ error: 'Property not owned' });
     player.home = propertyId;
-    const newMax = computeHappyMaxFor(player);
+    const petBonus = await petService.getHappyBonusForUser(player.user);
+    const newMax = computeHappyMaxFor(player, await propertyService.getCatalog(), petBonus);
     player.happiness.happyMax = newMax;
     if (typeof player.happiness.happy === 'number') player.happiness.happy = Math.min(player.happiness.happy, newMax);
     await player.save();
@@ -209,14 +220,15 @@ async function setActiveProperty(req, res){
 async function buyUpgrade(req, res){
   try {
     const { userId, propertyId, upgradeId } = req.body;
+    const PROPS = await propertyService.getCatalog();
     if (!userId || !propertyId || !upgradeId) return res.status(400).json({ error: 'userId, propertyId, and upgradeId are required' });
     let player = null; const n = Number(userId);
     if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
     if (!player) player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
-    await ensureStarterProperty(player);
+    await ensureStarterProperty(player, PROPS);
 
-    const propDef = PROPERTIES[propertyId];
+    const propDef = PROPS[propertyId];
     if (!propDef) return res.status(400).json({ error: 'Invalid propertyId' });
     const entry = getOwnedEntry(player, propertyId);
     if (!entry) return res.status(404).json({ error: 'Property not owned' });
@@ -249,7 +261,8 @@ async function buyUpgrade(req, res){
 
     // If upgrading the active home, recompute happyMax
     if (player.home === propertyId) {
-      const newMax = computeHappyMaxFor(player);
+      const petBonus = await petService.getHappyBonusForUser(player.user);
+      const newMax = computeHappyMaxFor(player, PROPS, petBonus);
       player.happiness.happyMax = newMax;
       player.happiness.happy = Math.min(player.happiness.happy, newMax);
     }
@@ -264,14 +277,15 @@ async function buyUpgrade(req, res){
 async function getHome(req, res){
   try {
     const { userId } = Object.assign({}, req.query, req.body);
+    const PROPS = await propertyService.getCatalog();
     if (!userId) return res.status(400).json({ error: 'userId is required' });
     let player = null; const n = Number(userId);
     if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
     if (!player) player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
-    await ensureStarterProperty(player);
-    const homeId = player.home || 'trailer';
-    const def = PROPERTIES[homeId] || PROPERTIES['trailer'];
+    await ensureStarterProperty(player, PROPS);
+  const homeId = player.home || 'trailer';
+    const def = PROPS[homeId] || PROPS['trailer'];
     const entry = (player.properties||[]).find(p => p.propertyId === homeId) || null;
     let upgrades = {};
     if (entry && entry.upgrades) {
@@ -285,6 +299,8 @@ async function getHome(req, res){
       const uDef = UPGRADES[uId];
       upgradeNames[uId] = uDef?.name || humanizeId(uId);
     });
+    const pet = await petService.getOwnedPetByUserId(player.user);
+    const petBonus = Number(pet?.happyBonus || 0);
     res.json({
       id: homeId,
       name: def?.name || homeId,
@@ -294,8 +310,9 @@ async function getHome(req, res){
       upkeep: Number(def?.upkeep || 0),
       upkeepDue: Number(entry?.upkeepDue || 0),
       lastUpkeepPaidAt: entry?.lastUpkeepPaidAt || null,
-      happyMax: player.happiness?.happyMax,
+      happyMax: computeHappyMaxFor(player, PROPS, petBonus),
       happy: player.happiness?.happy,
+      pet: pet ? { type: pet.type, name: pet.name, age: pet.age, happyBonus: pet.happyBonus } : null,
       money: player.money,
     });
   } catch (e) {
@@ -306,14 +323,15 @@ async function getHome(req, res){
 async function payUpkeep(req, res){
   try {
     const { userId } = req.body || {};
+    const PROPS = await propertyService.getCatalog();
     if (!userId) return res.status(400).json({ error: 'userId is required' });
     let player = null; const n = Number(userId);
     if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
     if (!player) player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
-    await ensureStarterProperty(player);
+    await ensureStarterProperty(player, PROPS);
     const homeId = player.home || 'trailer';
-    const def = PROPERTIES[homeId];
+    const def = PROPS[homeId];
     if (!def) return res.status(400).json({ error: 'Invalid home' });
     const entry = (player.properties||[]).find(p => p.propertyId === homeId);
     if (!entry) return res.status(404).json({ error: 'Home not owned' });

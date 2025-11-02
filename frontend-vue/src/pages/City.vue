@@ -39,6 +39,8 @@ const pois = [
   { id: 'job', name: 'Job Center', icon: '🏢', x: 52, y: 72, route: '/job' },
   { id: 'hof', name: 'Hall of Fame', icon: '🏆', x: 32, y: 16, route: '/hall-of-fame' },
   { id: 'real-estate', name: 'Real Estate', icon: '🏠', x: 72, y: 82, route: '/real-estate' },
+  { id: 'pets', name: 'Pet Store', icon: '🐾', x: 14, y: 64, route: '/pets' },
+  { id: 'market', name: 'Market', icon: '🛒', x: 8, y: 42, route: '/market' },
 
   // Shops scroll to sections below
   { id: 'shop-candy', name: 'Candy Shop', icon: '🍬', x: 24, y: 44, sectionId: '#shop-candy' },
@@ -60,6 +62,7 @@ const descriptions = {
   job: 'Find a job, gain points, and rank up.',
   hof: 'See top players and recent milestones.',
   'real-estate': 'Upgrade your home to boost stats.',
+  market: 'Player-to-player marketplace for items.',
 }
 
 function go(poi){

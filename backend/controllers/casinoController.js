@@ -1,7 +1,7 @@
 const wheelSettings = require("../config/casino");
 const Player = require("../models/Player");
 const Item = require("../models/Item");
-const { PROPERTIES } = require("../config/properties");
+const propertyService = require('../services/propertyService');
 
 function wheelReward(wheel) {  
   if (!wheelSettings[wheel]) {
@@ -103,7 +103,8 @@ const spinWheel = async (req, res) => {
       } else if (reward.type === 'property') {
         // Grant a property instance if the property id exists in our catalog
         const propId = String(reward.value);
-        if (PROPERTIES[propId]) {
+        const propDef = await propertyService.getProperty(propId);
+        if (propDef) {
           player.properties = player.properties || [];
           player.properties.push({ propertyId: propId, upgrades: {}, acquiredAt: new Date() });
           // If no home set, default to the first acquired property

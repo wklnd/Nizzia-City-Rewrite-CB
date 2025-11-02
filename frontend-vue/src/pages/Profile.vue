@@ -25,6 +25,21 @@
 
       <div class="profile__grid">
         <div class="panel">
+          <h3>Pet</h3>
+          <div v-if="petLoading" class="muted">Loading…</div>
+          <div v-else-if="!pet?.pet" class="muted">No pet owned.</div>
+          <div v-else class="pet-owned">
+            <img class="pet-img" :src="petImage(pet.pet)" alt="Pet" @error="onImgErr($event)"/>
+            <div>
+              <div class="pet-title"><strong>{{ pet.pet.name }}</strong> <span class="muted">({{ pet.pet.type }})</span></div>
+              <div class="pet-tags">
+                <span class="pill">Happiness Bonus: +{{ pet.pet.happyBonus }}</span>
+                <span class="pill">Age: {{ pet.pet.age }}d</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
           <h3>Finances</h3>
           <ul class="kv">
             <li><span class="k">Money</span><span class="v">{{ fmtMoney(fin.money) }}</span></li>
@@ -120,6 +135,10 @@ const days = ref(30)
 const history = ref({ id: null, days: 0, points: [] })
 const w = 480, h = 90
 
+// Pet state
+const pet = ref(null)
+const petLoading = ref(true)
+
 const vitals = computed(() => player.value?.vitals || { health: 0, energy: 0, energyMax: 0, nerve: 0, nerveMax: 0, happy: 0, happyMax: 0 })
 const fin = computed(() => player.value?.finances || { money: 0, bankLocked: 0, portfolioValue: 0, netWorth: 0 })
 const battleTotal = computed(() => {
@@ -159,6 +178,23 @@ async function loadHistory(){
   }
 }
 
+function onImgErr(e){ e.target.style.background = '#2b2b2b'; e.target.src = '' }
+function petImage(p){
+  if (!p?.type) return '/assets/images/pet_placeholder.jpg'
+  return `/assets/images/pet_${p.type}.jpg`
+}
+
+async function loadPet(){
+  petLoading.value = true
+  try {
+    const id = route.params.id || new URLSearchParams(location.search).get('id')
+    if (!id) { pet.value = { pet: null }; return }
+    const res = await api.get('/pets/my', { params: { userId: id } })
+    pet.value = res.data || res
+  } catch { pet.value = { pet: null } }
+  finally { petLoading.value = false }
+}
+
 function setDays(d){ days.value = d }
 
 const points = computed(() => (history.value?.points||[]).map(p => p.netWorth))
@@ -177,9 +213,9 @@ const svgPoints = computed(() => {
   }).join(' ')
 })
 
-onMounted(async () => { await load(); await loadHistory() })
+onMounted(async () => { await load(); await loadHistory(); await loadPet() })
 watch(days, loadHistory)
-watch(() => route.params.id, async () => { await load(); await loadHistory() })
+watch(() => route.params.id, async () => { await load(); await loadHistory(); await loadPet() })
 </script>
 
 <style scoped>
@@ -205,4 +241,11 @@ watch(() => route.params.id, async () => { await load(); await loadHistory() })
 .profile__panel--full { grid-column: 1 / -1; }
 .sparkline__caption { font-size: 12px; margin: 4px 0 6px; }
 .sparkline__scale { display:flex; justify-content: space-between; font-size: 11px; margin-top: 4px; }
+</style>
+<style scoped>
+.pet-owned { display:flex; gap: 12px; align-items: center; }
+.pet-img { width: 120px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background:#2b2b2b; }
+.pet-title { font-size: 15px; margin-bottom: 6px; }
+.pet-tags { display:flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.pill { display:inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background:#1e2433; font-size: 12px; }
 </style>

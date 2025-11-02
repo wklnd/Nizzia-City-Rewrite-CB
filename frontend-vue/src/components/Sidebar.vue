@@ -43,6 +43,9 @@
       <li><RouterLink to="/crimes">Crimes</RouterLink></li>
       <li><RouterLink to="/money">Money</RouterLink></li>
       <li><RouterLink to="/property">Property</RouterLink></li>
+      <li><RouterLink to="/pets">Pets</RouterLink></li>
+      <li><RouterLink to="/market">Market</RouterLink></li>
+      <li><RouterLink to="/vault">Vault</RouterLink></li>
     </ul>
 
     <div id="dev-menu" class="info u-mt-16" v-show="isDev">

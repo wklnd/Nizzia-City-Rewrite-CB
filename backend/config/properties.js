@@ -43,6 +43,14 @@ const PROPERTIES = {
     cost: 500000000,
     upkeep: 100000,
     baseHappyMax: 2000,
+  upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1, vault: 1 },
+  },
+  castle: {
+    id: 'castle',
+    name: 'Castle',
+    cost: 415788000,
+    upkeep: 10000,
+    baseHappyMax: 2725,
     upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
   },
   silo: {
@@ -52,7 +60,25 @@ const PROPERTIES = {
     upkeep: 1000000,
     baseHappyMax: 8000,
     market: false, // hidden from market; obtainable via special means
-    upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1, security_system: 3 },
+  upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1, security_system: 3, vault: 1 },
+  },
+  boat: {
+    id: 'boat',
+    name: 'Legend of the Seas',
+    cost: 12000000000,
+    upkeep: 1000000,
+    baseHappyMax: 7975,
+    market: false,
+    upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
+  },
+  castle_lux: {
+    id: 'castle_lux',
+    name: 'Chateau de Luxe au Nizzia',
+    cost: 52000000000,
+    upkeep: 1000000,
+    baseHappyMax: 8175,
+    market: false,
+  upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1, vault: 1 },
   },
 };
 

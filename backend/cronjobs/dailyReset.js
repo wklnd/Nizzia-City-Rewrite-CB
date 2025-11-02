@@ -1,7 +1,7 @@
 // Daily reset: accrue upkeep for each player's active property
 const cron = require('node-cron');
 const Player = require('../models/Player');
-const { PROPERTIES } = require('../config/properties');
+const propertyService = require('../services/propertyService');
 
 function startOfUtcDay(d){
 	const x = new Date(d); x.setUTCHours(0,0,0,0); return x;
@@ -10,12 +10,13 @@ function startOfUtcDay(d){
 async function accrueUpkeepOnce(){
 	const now = new Date();
 	const today = startOfUtcDay(now).getTime();
+	const PROPS = await propertyService.getCatalog();
 	let processed = 0, accrued = 0;
 	const cursor = Player.find({}, 'home properties').cursor();
 	for await (const player of cursor) {
 		processed++;
 		const homeId = player.home || 'trailer';
-		const def = PROPERTIES[homeId];
+		const def = PROPS[homeId];
 		if (!def) continue;
 		// find or create home entry
 		let entry = (player.properties || []).find(p => p.propertyId === homeId);

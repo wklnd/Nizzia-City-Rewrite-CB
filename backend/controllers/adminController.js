@@ -457,6 +457,8 @@ module.exports = {
   adjustExp,
   setLevel,
   adjustResources,
+  setBattleStats,
+  setWorkStats,
   inventoryAdd,
   inventoryRemove,
   stocksAdd,
@@ -485,6 +487,56 @@ module.exports = {
 // ------------------------------
 // Moderation & metadata
 // ------------------------------
+
+// PATCH /api/admin/stats/battle { adminUserId, targetUserId, strength?, speed?, dexterity?, defense? }
+async function setBattleStats(req, res) {
+  try {
+    const { targetUserId } = req.body;
+    if (!targetUserId) return res.status(400).json({ error: 'targetUserId is required' });
+    await getAdminPlayerFromReq(req);
+    const player = await Player.findOne({ user: targetUserId });
+    if (!player) return res.status(404).json({ error: 'Target player not found' });
+    const allowed = ['strength','speed','dexterity','defense'];
+    for (const k of allowed) {
+      if (typeof req.body[k] !== 'undefined') {
+        const v = Math.max(0, Number(req.body[k]));
+        player.battleStats[k] = Number.isFinite(v) ? v : player.battleStats[k];
+      }
+    }
+    await player.save();
+    return res.json({ battleStats: player.battleStats });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN setBattleStats error:', err);
+    return res.status(500).json({ error: 'Failed to set battle stats' });
+  }
+}
+
+// PATCH /api/admin/stats/work { adminUserId, targetUserId, manuallabor?, intelligence?, endurance?, employeEfficiency? }
+async function setWorkStats(req, res) {
+  try {
+    const { targetUserId } = req.body;
+    if (!targetUserId) return res.status(400).json({ error: 'targetUserId is required' });
+    await getAdminPlayerFromReq(req);
+    const player = await Player.findOne({ user: targetUserId });
+    if (!player) return res.status(404).json({ error: 'Target player not found' });
+    const allowed = ['manuallabor','intelligence','endurance','employeEfficiency'];
+    for (const k of allowed) {
+      if (typeof req.body[k] !== 'undefined') {
+        const v = Math.max(0, Number(req.body[k]));
+        player.workStats[k] = Number.isFinite(v) ? v : player.workStats[k];
+      }
+    }
+    await player.save();
+    return res.json({ workStats: player.workStats });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN setWorkStats error:', err);
+    return res.status(500).json({ error: 'Failed to set work stats' });
+  }
+}
 
 // PATCH /api/admin/player/status { adminUserId, targetUserId, status }
 async function setPlayerStatus(req, res) {

@@ -160,6 +160,35 @@
       </div>
     </div>
 
+    <!-- Battle stats -->
+    <div class="card" v-if="profile">
+      <h3>Battle Stats</h3>
+      <div class="row">
+        <div><label>Strength</label><input v-model.number="battle.strength" type="number" min="0" /></div>
+        <div><label>Speed</label><input v-model.number="battle.speed" type="number" min="0" /></div>
+        <div><label>Dexterity</label><input v-model.number="battle.dexterity" type="number" min="0" /></div>
+        <div><label>Defense</label><input v-model.number="battle.defense" type="number" min="0" /></div>
+      </div>
+      <div class="actions">
+        <button @click="applyBattleStats">Set Battle Stats</button>
+        <span class="muted">Current total: {{ num((profile?.battleStats?.strength||0) + (profile?.battleStats?.speed||0) + (profile?.battleStats?.dexterity||0) + (profile?.battleStats?.defense||0)) }}</span>
+      </div>
+    </div>
+
+    <!-- Work stats -->
+    <div class="card" v-if="profile">
+      <h3>Work Stats</h3>
+      <div class="row">
+        <div><label>Manual Labor</label><input v-model.number="work.manuallabor" type="number" min="0" /></div>
+        <div><label>Intelligence</label><input v-model.number="work.intelligence" type="number" min="0" /></div>
+        <div><label>Endurance</label><input v-model.number="work.endurance" type="number" min="0" /></div>
+        <div><label>Employee Efficiency</label><input v-model.number="work.employeEfficiency" type="number" min="0" /></div>
+      </div>
+      <div class="actions">
+        <button @click="applyWorkStats">Set Work Stats</button>
+      </div>
+    </div>
+
     <!-- General (bulk) -->
     <div class="card">
       <h3>General (bulk)</h3>
@@ -470,6 +499,8 @@ const currency = ref({ moneyDelta: 0, pointsDelta: 0, meritsDelta: 0, xmasCoinsD
 const expDelta = ref(0)
 const levelSet = ref(1)
 const resources = ref({ energyDelta: 0, nerveDelta: 0, happyDelta: 0 })
+const battle = ref({ strength: 0, speed: 0, dexterity: 0, defense: 0 })
+const work = ref({ manuallabor: 0, intelligence: 0, endurance: 0, employeEfficiency: 0 })
 
 const generalIncludeNPC = ref('false')
 const generalMoneyAmount = ref(0)
@@ -561,6 +592,11 @@ async function onLoadPlayer(){
     modStatus.value = profile.value.playerStatus || 'Active'
     modRole.value = profile.value.playerRole || 'Player'
     if (titles.value.includes(profile.value.playerTitle)) modTitle.value = profile.value.playerTitle
+    // prefill battle/work stat editors
+    const bs = profile.value.battleStats || {}
+    battle.value = { strength: Number(bs.strength||0), speed: Number(bs.speed||0), dexterity: Number(bs.dexterity||0), defense: Number(bs.defense||0) }
+    const ws = profile.value.workStats || {}
+    work.value = { manuallabor: Number(ws.manuallabor||0), intelligence: Number(ws.intelligence||0), endurance: Number(ws.endurance||0), employeEfficiency: Number(ws.employeEfficiency||0) }
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
 }
 
@@ -626,6 +662,29 @@ async function applyResources(){
     if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/resources', body)
     alert('Resources: ' + JSON.stringify(res.data || res))
+  } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
+}
+
+async function applyBattleStats(){
+  try {
+    const t = ensureTarget()
+    const body = { targetUserId: t, ...battle.value }
+    if (adminUserId.value) body.adminUserId = adminUserId.value
+    const res = await api.patch('/admin/stats/battle', body)
+    // update profile locally
+    if (profile.value) profile.value.battleStats = res.data?.battleStats || profile.value.battleStats
+    alert('Battle stats set')
+  } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
+}
+
+async function applyWorkStats(){
+  try {
+    const t = ensureTarget()
+    const body = { targetUserId: t, ...work.value }
+    if (adminUserId.value) body.adminUserId = adminUserId.value
+    const res = await api.patch('/admin/stats/work', body)
+    if (profile.value) profile.value.workStats = res.data?.workStats || profile.value.workStats
+    alert('Work stats set')
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
 }
 

@@ -15,6 +15,9 @@ const Bank = () => import('../pages/Bank.vue')
 const Profile = () => import('../pages/Profile.vue')
 const HallOfFame = () => import('../pages/HallOfFame.vue')
 const RealEstate = () => import('../pages/RealEstate.vue')
+const Pets = () => import('../pages/Pets.vue')
+const Market = () => import('../pages/Market.vue')
+const Vault = () => import('../pages/Vault.vue')
 const Admin = () => import('../pages/Admin.vue')
 const News = () => import('../pages/News.vue')
 const Rules = () => import('../pages/Rules.vue')
@@ -47,6 +50,9 @@ const routes = [
   { path: '/profile/:id', name: 'profile-id', component: Profile },
   { path: '/hall-of-fame', name: 'hall-of-fame', component: HallOfFame },
   { path: '/real-estate', name: 'real-estate', component: RealEstate },
+  { path: '/pets', name: 'pets', component: Pets },
+  { path: '/market', name: 'market', component: Market },
+  { path: '/vault', name: 'vault', component: Vault },
   { path: '/admin', name: 'admin', component: Admin },
   { path: '/news', name: 'news', component: News },
 

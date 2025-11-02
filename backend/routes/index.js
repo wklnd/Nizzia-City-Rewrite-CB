@@ -15,6 +15,9 @@ const bankRoutes = require('./bankRoutes');
 const hofRoutes = require('./hofRoutes');
 const adminRoutes = require('./adminRoutes');
 const realEstateRoutes = require('./realEstateRoutes');
+const petRoutes = require('./petRoutes');
+const marketRoutes = require('./marketRoutes');
+const vaultRoutes = require('./vaultRoutes');
 
 function mountRoutes(app) {
   app.use('/api/items', itemRoutes);
@@ -33,6 +36,9 @@ function mountRoutes(app) {
   app.use('/api/hof', hofRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/realestate', realEstateRoutes);
+  app.use('/api/pets', petRoutes);
+  app.use('/api/market', marketRoutes);
+  app.use('/api/vault', vaultRoutes);
 }
 
 module.exports = { mountRoutes };
