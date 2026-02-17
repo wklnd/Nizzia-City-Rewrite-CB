@@ -1,78 +1,283 @@
-## Nizzia City - A Torn.com inspired Crime Game
+# Nizzia City
 
-### Lore: 
-Nizzia City is a rundown, crime-ridden city where players can immerse themselves in a virtual world filled with various activities, jobs, and interactions. The game draws inspiration from Torn.com, offering a similar experience with its own unique twists and features.
+A browser-based crime RPG inspired by Torn.com. Build your criminal empire, trade on the stock market, train at the gym, grow and sell contraband, spin the casino wheel, and climb the ranks in a persistent online world.
 
-### Features
-- User Authentication: Secure login and registration system.
-- Player Profiles: Each player has a profile with stats, inventory, and achievements.
-- Casino System: Players can try their luck at the casino with various games and rewards.
-- Item Management: Players can acquire, use, and trade items.
-- Pet Store: Players can buy and manage a single pet that grants bonuses (e.g., happiness). Pets live in your current property.
-- Item Market: Player-to-player marketplace to list items for sale, browse listings, buy, and cancel.
-- Admin Panel: A dedicated interface for administrators to manage the game.
-- Real-time Updates: Dynamic updates to player stats and game events.
-- Cooldown System: Certain actions have cooldown periods to enhance gameplay balance.
+---
 
+## Table of Contents
 
-### Tech
-Nizzia City's backend is written in NodeJS with the following packages:
-    "bcryptjs": "^2.4.3",
-    "chalk": "^5.6.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.5.0",
-    "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.14.2",
-    "morgan": "^1.10.0",
-    "node-cron": "^3.0.3"
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [API Reference](#api-reference)
+- [Tooling](#tooling)
+- [Contributing](#contributing)
+- [License](#license)
 
-The frontend is built with Vue.js 3 and uses:
-    "axios": "^1.7.7",
-    "pinia": "^2.1.7",
-    "vue": "^3.4.38",
-    "vue-router": "^4.4.5"
+---
 
+## Overview
 
-### Setup
-1. Clone the repository
-2. Run `npm install` in both `backend` and `frontend-vue` directories
-3. Create a `.env` file in the `backend` directory based on the `.env
-   example provided.
-4. Start the backend server with `npm start` in the `backend` directory.
-5. Start the frontend development server with `npm run dev` in the `frontend-vue` directory.
-6. Access the application at `http://localhost:5173` in your web browser.
+Nizzia City is a gritty, text-driven crime game set in a rundown metropolis where players compete for wealth, power, and reputation. Every action matters: train your stats, work a job, invest in stocks, manage real estate, grow and sell weed, acquire pets, trade items on the player market, and wage war against rivals.
+
+The game runs on a Node.js / Express backend with MongoDB and a Vue 3 single-page frontend.
+
+---
+
+## Features
+
+### Player Systems
+
+- Secure JWT-based authentication with login and registration.
+- Persistent player profiles with stats, inventory, battle records, and titles.
+- Energy, nerve, happiness, and health regeneration on scheduled intervals.
+- Cooldown mechanics across drugs, boosters, alcohol, and medical items.
+
+### Economy
+
+- Cash economy with a player-to-player item marketplace (list, browse, buy, cancel).
+- Banking system with dynamic APR rates, fixed-term deposits, and automated interest payouts.
+- Stock market with multiple tickers, historical price charts, event-driven volatility, and portfolio tracking.
+- Real estate ownership with upgradeable properties and upkeep costs.
+
+### Progression
+
+- Gym training across four battle stats (strength, defense, dexterity, speed) with unlockable gym tiers.
+- Job system with ranks, promotions, stat requirements, and scaling pay.
+- Education system for long-term skill advancement.
+- Pets with happiness bonuses, renaming, and property-based housing.
+- Player titles and honor bars awarded for milestones.
+
+### Crime and Grow
+
+- Pickpocketing and organized crime with stat-based outcome calculations.
+- Warehouse grow operation: purchase warehouses, plant seeds across seven strains, harvest on real-time timers, and sell or consume the product for cash and stat boosts.
+- Addiction mechanics tied to substance consumption.
+
+### Social
+
+- Hall of Fame leaderboards for wealth, battle prowess, and work stats.
+- NPC actors that autonomously trade stocks, invest in the bank, and train at the gym.
+- Cartels with territory control, missions, and NPC encounters.
+
+### Casino
+
+- Tiered spin wheels with configurable reward tables.
+
+### Administration
+
+- Full admin console: player lookup, resource adjustment, cooldown control, item creation, stock manipulation, bank account oversight, and database maintenance.
+
+---
+
+## Tech Stack
+
+### Backend
+
+| Package      | Purpose                                    |
+| ------------ | ------------------------------------------ |
+| Express 5    | HTTP server and API routing                |
+| Mongoose 8   | MongoDB ODM                                |
+| jsonwebtoken | JWT authentication                         |
+| bcryptjs     | Password hashing                           |
+| node-cron    | Scheduled tasks (regen, NPC actions, rates) |
+| dotenv       | Environment configuration                  |
+| cors         | Cross-origin resource sharing              |
+| morgan       | HTTP request logging                       |
+| chalk        | Terminal output formatting                 |
+
+### Frontend
+
+| Package    | Purpose                   |
+| ---------- | ------------------------- |
+| Vue 3      | Reactive UI framework     |
+| Vue Router | Client-side routing       |
+| Pinia      | State management          |
+| Axios      | HTTP client               |
+| Vite       | Build tool and dev server |
+
+### Dev Tools
+
+| Package  | Purpose              |
+| -------- | -------------------- |
+| ESLint   | Code linting         |
+| Prettier | Code formatting      |
+| nodemon  | Auto-restart on save |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js v18 or later
+- A running MongoDB instance (local or remote)
+
+### Installation
+
+```sh
+git clone https://github.com/wklnd/Nizzia-City-Rewrite-CB.git
+cd Nizzia-City-Rewrite-CB
+
+# Install all dependencies (backend)
+npm install
+
+# Install frontend dependencies
+cd frontend-vue
+npm install
+```
+
+### Configuration
+
+Create a `.env` file in the project root (or `backend/` directory) with at least:
+
+```
+MONGO_URI=mongodb://localhost:27017/nizziacity
+JWT_SECRET=your_secret_key
+PORT=3000
+```
+
+### Running
+
+```sh
+# Start the backend
+npm start          # or: npm run dev (with nodemon)
+
+# In a separate terminal, start the frontend
+cd frontend-vue
+npm run dev
+```
+
+The application will be available at `http://localhost:5173`.
+
+---
+
+## Project Structure
+
+```
+backend/
+    app.js                  Application entry point
+    config/                 Game balance and data tables
+                            (jobs, stocks, pets, properties, casino, crimes, etc.)
+    controllers/            Route handlers for every game system
+    creation/               Offline data workbench (items, properties, titles, honor bars)
+    cronjobs/               Scheduled tasks
+                            (regen, NPC behavior, stock ticker, bank APR, daily reset)
+    middleware/             Auth, error handling, request logging
+    models/                 Mongoose schemas (Player, Item, Stock, Property, Cartel, etc.)
+    routes/                 Express route definitions
+    services/               Business logic layer
+    tools/                  CLI utilities and offline helpers
+    utils/                  Shared helpers
+
+frontend-vue/
+    src/
+        api/                Axios client configuration
+        assets/             Global CSS and static assets
+        components/         Reusable Vue components (Sidebar, Topbar, InfoBox, Footer)
+        composables/        Vue composables for shared logic
+        layouts/            Page layout wrappers
+        pages/              Route-level page components
+        router/             Vue Router configuration
+        stores/             Pinia state stores
+        utils/              Frontend utility functions
+    public/
+        assets/images/      Property and pet images
+```
+
+---
+
+## API Reference
+
+All endpoints are mounted under `/api`. Authentication is required unless noted otherwise.
+
+### Authentication
+
+| Method | Endpoint             | Description                |
+| ------ | -------------------- | -------------------------- |
+| POST   | `/api/auth/register` | Create a new account       |
+| POST   | `/api/auth/login`    | Authenticate and receive JWT |
 
 ### Item Market
-- UI: In the Vue app, open City and click the "Market" (🛒) POI, or use the sidebar link to "/market".
-- Actions supported:
-    - Create listing: pick an item from your inventory, set quantity and unit price.
-    - Browse and buy: filter listings by name and purchase quantities up to the available amount.
-    - Manage: view your active listings and cancel them to return remaining items to your inventory.
-- API endpoints (mounted under `/api/market`):
-    - `GET /market/listings` — Optional query params: `itemId`, `sellerId` (playerId or user id). Returns `{ listings: [...] }`.
-    - `POST /market/list` — Body: `{ userId, itemId, qty, price }`. Deducts inventory and creates a listing.
-    - `POST /market/buy` — Body: `{ userId, listingId, qty }`. Transfers money and items; deletes listing when empty.
-    - `POST /market/cancel` — Body: `{ userId, listingId }`. Returns remaining stock to seller and removes listing.
 
-Notes
-- `userId` accepts either a Player `id` (number) or the `user` ObjectId string; the backend resolves both forms.
-- Listings store `itemId` (the custom item key), and inventory references the Item document `_id`.
+| Method | Endpoint               | Description                                |
+| ------ | ---------------------- | ------------------------------------------ |
+| GET    | `/api/market/listings` | Browse listings (filter by item or seller) |
+| POST   | `/api/market/list`     | Create a listing from inventory            |
+| POST   | `/api/market/buy`      | Purchase items from a listing              |
+| POST   | `/api/market/cancel`   | Cancel a listing and return items           |
 
-### Database
-The application uses MongoDB as its database. Ensure you have a MongoDB instance running and properly
-configured in your `.env` file.
+### Banking
 
-### Contributing
-Contributing is not currently open, but all contributions will be considered in the future. Please fork the repository and create a pull request with your changes.
+| Method | Endpoint                     | Description                      |
+| ------ | ---------------------------- | -------------------------------- |
+| GET    | `/api/bank/rates`            | Current APR rates for all terms  |
+| GET    | `/api/bank/accounts/:userId` | Retrieve deposit accounts        |
+| POST   | `/api/bank/deposit`          | Open a new fixed-term deposit    |
+| POST   | `/api/bank/withdraw`         | Withdraw a matured deposit       |
 
+### Stocks
 
+| Method | Endpoint              | Description                      |
+| ------ | --------------------- | -------------------------------- |
+| GET    | `/api/stocks/prices`  | Latest prices for all tickers    |
+| GET    | `/api/stocks/history` | Historical price data for charts |
+| POST   | `/api/stocks/buy`     | Purchase shares                  |
+| POST   | `/api/stocks/sell`    | Sell shares from portfolio       |
 
-### Upcoming Features
-- Pet Minigames
-    - Expand pets with activities (training, tricks, competitions) that provide additional bonuses and fun progression.
-- The Job Update 
-    - The job system allows players to work in various professions to earn money and gain experience. It also allows players to create their own companies, hire employees, and manage business operations. If the company does well, it even can be listed on the in-game stock market for players to invest in.
-	Each Job allows players to gain stats and job points, which can be used to gain perks and bonuses related to their profession.
-- Item Market
-	- An in-game marketplace where players can buy and sell items with each other. This feature will include an auction system, direct trades, and a listing system for players to showcase their items for sale.
+### Grow System
+
+| Method | Endpoint                  | Description                             |
+| ------ | ------------------------- | --------------------------------------- |
+| GET    | `/api/grow/strains`       | All strains with costs, times, effects  |
+| GET    | `/api/grow/warehouses`    | All warehouse tiers with pot limits     |
+| GET    | `/api/grow/my`            | Player's warehouse, pots, and stash     |
+| POST   | `/api/grow/buy-warehouse` | Purchase or upgrade warehouse           |
+| POST   | `/api/grow/buy-pot`       | Buy an additional pot                   |
+| POST   | `/api/grow/plant`         | Plant a seed in a pot                   |
+| POST   | `/api/grow/harvest`       | Harvest a ready plant                   |
+| POST   | `/api/grow/sell`          | Sell weed from stash for cash           |
+| POST   | `/api/grow/use`           | Consume weed for stat boosts            |
+
+### Admin
+
+All admin routes are mounted under `/api/admin` and require administrator privileges. Capabilities include player lookup, resource adjustment, stat modification, cooldown management, item creation, stock manipulation, and database operations.
+
+---
+
+## Tooling
+
+The `backend/tools/` directory contains standalone utilities:
+
+| Tool                             | Description                                                    |
+| -------------------------------- | -------------------------------------------------------------- |
+| `itemCreator.html`               | Browser-based form for designing items with effect builders    |
+| `crime/pickpocket.html`          | Stat-based outcome simulator for crime balancing               |
+| `database/databasePurge.js`      | Drops the entire database (destructive, requires confirmation) |
+| `database/databaseDump.js`       | Dumps database contents to JSON                                |
+| `database/seedMarket.js`         | Populates the marketplace with sample listings                 |
+| `database/normalizePlayers.js`   | Normalizes player documents to current schema                  |
+| `resetCooldowns.js`              | CLI tool to clear player cooldowns with dry-run support        |
+| `stocks/backfill.js`             | Backfills historical stock price data                          |
+
+The `backend/creation/` directory provides an offline workbench for building items, properties, titles, and honor bars with JSON import/export.
+
+---
+
+## Contributing
+
+This project is not open for contributions at this time. If you would like to contribute, fork the repository, make your changes on a feature branch, and submit a pull request for review.
+
+---
+
+## License
+
+Copyright Oscar Wiklund. All rights reserved.
+
+This source code is provided for personal, educational, and non-commercial use only. You may study and reference the code freely, but you may not republish, redistribute, or use it commercially without explicit written permission from the author.
+
+---
+
+*Built by Oscar Wiklund.*
