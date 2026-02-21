@@ -1,0 +1,302 @@
+{
+  "repo_notes": [
+    {
+      "content": "This repo contains the entire Nizzia City codebase."
+    }
+  ],
+  "pages": [
+    {
+      "title": "Overview",
+      "purpose": "Introduce Nizzia City, a browser-based crime RPG with persistent online gameplay. Explain the game's purpose, core features, and high-level architecture (backend Node.js/Express/MongoDB, frontend Vue 3/Pinia).",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "System Architecture",
+      "purpose": "Document the overall three-tier architecture: frontend Vue SPA, backend Express API, and MongoDB database, plus the background cronjob system.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Backend Architecture",
+      "purpose": "Explain the backend's layered design: routes, controllers, services, models. Detail middleware stack (CORS, auth, logging) and the separation of concerns.",
+      "parent": "System Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Frontend Architecture",
+      "purpose": "Document the Vue 3 SPA architecture including Vue Router, Pinia state management, component structure (pages, components, layouts), and API client integration.",
+      "parent": "System Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Database and Models",
+      "purpose": "Overview of MongoDB database structure, Mongoose models, and the schema design patterns used throughout the system.",
+      "parent": "System Architecture",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Player System",
+      "purpose": "Comprehensive documentation of the Player entity, the central data structure in the game containing all player state, stats, resources, and relationships.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Player Model Schema",
+      "purpose": "Detailed breakdown of the Player Mongoose schema: all fields, nested objects, data types, validation rules, and relationships to other models.",
+      "parent": "Player System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Resource Management",
+      "purpose": "Document the four core renewable resources (Energy, Nerve, Happiness, Health) including their properties, caps, regeneration mechanics, and usage patterns.",
+      "parent": "Player System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Stats and Progression",
+      "purpose": "Explain player progression systems: levels, experience, battle stats (strength/defense/dex/speed), work stats, and how they're modified through gameplay.",
+      "parent": "Player System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Cooldown System",
+      "purpose": "Document the cooldown mechanics: legacy aggregate cooldowns, per-drug granular cooldowns, cooldown categories (medical/drug/booster/alcohol), and how they prevent item spam.",
+      "parent": "Player System",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Inventory and Items",
+      "purpose": "Overview of the inventory management system and item mechanics, including item types, effects, and player-item interactions.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Inventory System",
+      "purpose": "Document the inventory API endpoints (getInventory, buyItem, sellItem, useItem), inventory data structure, quantity management, and error handling.",
+      "parent": "Inventory and Items",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Item System",
+      "purpose": "Detail the Item model schema including all item types (weapon/armor/medicine/drugs/cache/etc.), type-specific properties, and the item creation/management workflow.",
+      "parent": "Inventory and Items",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Item Effects and Usage",
+      "purpose": "Explain how items are consumed and their effects applied: effect objects, overdose effects, passive effects, cooldown setting, cache rewards, and the apply-then-consume pattern.",
+      "parent": "Inventory and Items",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Item Marketplace",
+      "purpose": "Document the player-to-player item marketplace: listing items, buying, canceling listings, and marketplace data structures.",
+      "parent": "Inventory and Items",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Economic Systems",
+      "purpose": "Overview of all economic systems in the game: currencies, stock market, banking, real estate, and how they interact.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Currencies",
+      "purpose": "Document the multi-currency system: money (primary), points (premium), merits (earned), and seasonal currencies (xmas/halloween/easter).",
+      "parent": "Economic Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Stock Market System",
+      "purpose": "Comprehensive documentation of the stock market: 7 stock tickers, stock configuration (volatility, yields), price history, portfolio management, buy/sell operations.",
+      "parent": "Economic Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Banking System",
+      "purpose": "Document the banking system: fixed-term deposits, dynamic APR rates, interest calculations, maturity dates, and withdrawal mechanics.",
+      "parent": "Economic Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Real Estate System",
+      "purpose": "Explain the property system: property catalog, purchase/ownership, upgrades (types and levels), upkeep costs, happiness bonuses, and property-based features.",
+      "parent": "Economic Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Crime and Activities",
+      "purpose": "Overview of criminal activities and other gameplay mechanics: pickpocketing, organized crime, gym training, warehouse grow operations, casino.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Crime System",
+      "purpose": "Document crime mechanics: crime statistics tracking, experience gained, success/fail rates, and stat-based outcome calculations.",
+      "parent": "Crime and Activities",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Pickpocketing Calculator",
+      "purpose": "Deep dive into pickpocket calculations: player stats vs target stats, status effects (drunk/sleepy/etc.), success chance formula, outcome logic (success/caught/jailed).",
+      "parent": "Crime and Activities",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Gym System",
+      "purpose": "Document gym training: gym tiers, unlocking requirements (energy spent + money), stat gain calculations, energy consumption, happiness cost, and the calculateGain service.",
+      "parent": "Crime and Activities",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Warehouse Grow System",
+      "purpose": "Explain the warehouse grow operation: purchasing warehouses, pot limits, planting seeds (7 strains), growth timers, harvesting, selling/consuming products, and stat boosts.",
+      "parent": "Crime and Activities",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Casino System",
+      "purpose": "Document casino mechanics: multiple wheel types, per-wheel cooldowns, self-exclusion features, and casino state management.",
+      "parent": "Crime and Activities",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Background Systems",
+      "purpose": "Overview of autonomous systems that run independently of player actions: cronjobs, regeneration, economy simulation, NPC behavior.",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Cronjob System Architecture",
+      "purpose": "Explain the node-cron scheduling system: how cronjobs are initialized, scheduling patterns, database connection safety, and DISABLE_CRON environment variable.",
+      "parent": "Background Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Regeneration System",
+      "purpose": "Document the four regeneration cronjobs: energy (+5 every 10min), nerve (+1 every 5min), happiness (+5 every 5min), cooldowns (-60s every 1min), including their capped increment logic.",
+      "parent": "Background Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Economy Automation",
+      "purpose": "Explain automated economy systems: stock ticker (price updates, event-driven volatility), bank APR adjustments, interest payouts.",
+      "parent": "Background Systems",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    }
+  ]
+}
