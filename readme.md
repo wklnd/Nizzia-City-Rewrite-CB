@@ -1,8 +1,7 @@
 # Nizzia City
 
 A browser-based crime RPG inspired by Torn.com. Build your criminal empire, trade on the stock market, train at the gym, grow and sell contraband, spin the casino wheel, and climb the ranks in a persistent online world.
-
-[DeepWiki - Nizzia City](https://deepwiki.com/wklnd/Nizzia-City-Rewrite-CB/1-overview)
+[![Read our  DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/wklnd/Nizzia-City-Rewrite-CB)
 
 ---
 
