@@ -2,10 +2,10 @@ const Player = require('../models/Player');
 const Item = require('../models/Item');
 const mongoose = require('mongoose');
 
-// GET /api/inventory/:userId
+// GET /api/inventory/mine
 async function getInventory(req, res) {
   try {
-    const { userId } = req.params;
+    const userId = req.authUserId;
     const player = await Player.findOne({ user: userId }).populate('inventory.item');
     if (!player) return res.status(404).json({ error: 'Player not found' });
     return res.json({ inventory: player.inventory || [] });
@@ -15,12 +15,13 @@ async function getInventory(req, res) {
   }
 }
 
-// POST /api/inventory/buy { userId, itemId, qty }
+// POST /api/inventory/buy { itemId, qty }
 async function buyItem(req, res) {
   try {
-    const { userId, itemId, qty } = req.body;
+    const userId = req.authUserId;
+    const { itemId, qty } = req.body;
     const quantity = Math.max(1, Number(qty || 1));
-    if (!userId || !itemId) return res.status(400).json({ error: 'userId and itemId are required' });
+    if (!itemId) return res.status(400).json({ error: 'itemId is required' });
 
     const [player, item] = await Promise.all([
       Player.findOne({ user: userId }),
@@ -34,6 +35,7 @@ async function buyItem(req, res) {
     if ((player.money || 0) < total) return res.status(400).json({ error: 'Not enough money' });
 
     // Deduct money and add to inventory (upsert)
+    player.$locals._txMeta = { type: 'purchase', description: `Bought ${quantity}x ${item.name || 'item'}` };
     player.money = Number(player.money || 0) - total;
     const idx = (player.inventory || []).findIndex(e => String(e.item) === String(item._id));
     if (idx >= 0) {
@@ -53,9 +55,10 @@ async function buyItem(req, res) {
 
 async function sellItem(req, res) {
   try {
-    const { userId, itemId, qty } = req.body;
+    const userId = req.authUserId;
+    const { itemId, qty } = req.body;
     const quantity = Math.max(1, Number(qty || 1));
-    if (!userId || !itemId) return res.status(400).json({ error: 'userId and itemId are required' });
+    if (!itemId) return res.status(400).json({ error: 'itemId is required' });
 
     const [player, item] = await Promise.all([
       Player.findOne({ user: userId }),
@@ -73,6 +76,7 @@ async function sellItem(req, res) {
 
     // Update inventory and add money
     player.inventory[idx].qty = Number(player.inventory[idx].qty || 0) - quantity;
+    player.$locals._txMeta = { type: 'sale', description: `Sold ${quantity}x ${item.name || 'item'}` };
     player.money = Number(player.money || 0) + total;
 
     await player.save();
@@ -87,12 +91,13 @@ async function sellItem(req, res) {
 
 module.exports = { getInventory, buyItem };
  
-// POST /api/inventory/use { userId, itemId, qty? }
+// POST /api/inventory/use { itemId, qty? }
 async function useItemFromInventory(req, res) {
   try {
-    const { userId, itemId } = req.body;
+    const userId = req.authUserId;
+    const { itemId } = req.body;
     const quantity = Math.max(1, Number(req.body?.qty || 1));
-    if (!userId || !itemId) return res.status(400).json({ error: 'userId and itemId are required' });
+    if (!itemId) return res.status(400).json({ error: 'itemId is required' });
 
     // Resolve player by user id
     const player = await Player.findOne({ user: userId });

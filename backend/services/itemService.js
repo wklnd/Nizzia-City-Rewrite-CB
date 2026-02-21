@@ -184,6 +184,7 @@ const applyItem = async (userOrPlayerId, itemId) => {
         amount = randInt(mi, Math.max(mi, mx));
       }
       if (amount && roll(cache.moneyChance)) {
+        player.$locals._txMeta = { type: 'other', description: `Cache reward` };
         player.money = Number(player.money || 0) + amount;
       }
     }

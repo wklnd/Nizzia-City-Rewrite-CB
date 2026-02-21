@@ -280,4 +280,4 @@ This source code is provided for personal, educational, and non-commercial use o
 
 ---
 
-*Built by Oscar Wiklund.*
+*Built by Oscar Wiklund and Vue.*

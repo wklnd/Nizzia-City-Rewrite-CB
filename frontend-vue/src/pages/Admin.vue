@@ -7,10 +7,6 @@
       <h3>Target</h3>
       <div class="row">
         <div>
-          <label>Admin userId</label>
-          <input v-model.trim="adminUserId" placeholder="Your admin player userId" />
-        </div>
-        <div>
           <label>Target player id (numeric)</label>
           <input v-model.trim="targetPlayerId" placeholder="e.g. 748" />
         </div>
@@ -477,6 +473,23 @@
       </div>
     </div>
 
+    <!-- Cartel -->
+    <div class="card">
+      <h3>Cartel Reputation</h3>
+      <div class="inline">
+        <div>
+          <label>Set Rep Level</label>
+          <select v-model.number="cartelRepLevel">
+            <option :value="-1">— pick rank —</option>
+            <option v-for="r in cartelRanks" :key="r.level" :value="r.level">{{ r.level }} — {{ r.name }} ({{ r.xpRequired.toLocaleString() }} rep)</option>
+          </select>
+        </div>
+        <div><label>Or Set Exact Rep</label><input v-model.number="cartelRepExact" type="number" min="0" placeholder="exact rep value" /></div>
+        <button @click="applyCartelRep">Set Cartel Rep</button>
+      </div>
+      <div v-if="cartelRepMsg" class="muted">{{ cartelRepMsg }}</div>
+    </div>
+
     <!-- Addiction + Database (Danger) -->
     <div class="card">
       <h3>Addiction & Database (Danger)</h3>
@@ -496,8 +509,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../api/client'
+import { useToast } from '../composables/useToast'
+import { fmtInt as num, fmtDate as fmt } from '../utils/format'
 
-const adminUserId = ref('')
+const toast = useToast()
+
 const targetPlayerId = ref('')
 const targetUserId = ref('')
 const profile = ref(null)
@@ -563,27 +579,38 @@ const cdCurrentSummary = ref('')
 
 const dbConfirm = ref('')
 const addictionValue = ref(0)
+const cartelRepLevel = ref(-1)
+const cartelRepExact = ref(null)
+const cartelRepMsg = ref('')
+const cartelRanks = [
+  { level: 0, name: 'Nobody',             xpRequired: 0 },
+  { level: 1, name: 'Corner Boy',         xpRequired: 100 },
+  { level: 2, name: 'Street Hustler',     xpRequired: 500 },
+  { level: 3, name: 'Shot Caller',        xpRequired: 1500 },
+  { level: 4, name: 'Underboss',          xpRequired: 5000 },
+  { level: 5, name: 'Drug Lord',          xpRequired: 15000 },
+  { level: 6, name: 'Kingpin',            xpRequired: 40000 },
+  { level: 7, name: 'Narco God',          xpRequired: 100000 },
+  { level: 8, name: 'El Padrino',         xpRequired: 200000 },
+  { level: 9, name: 'The One Who Knocks', xpRequired: 500000 },
+]
 
-function num(n){ return Number(n).toLocaleString() }
-function fmt(d){ try { return new Date(d).toLocaleString() } catch { return '' } }
 
+// Cartel rep admin
 function loadSavedIds(){
   try {
-    const a = localStorage.getItem('nc_admin_uid')
     const t = localStorage.getItem('nc_target_uid')
     const pid = localStorage.getItem('nc_target_pid')
-    if (a) adminUserId.value = a
     if (t) targetUserId.value = t
     if (pid) targetPlayerId.value = pid
   } catch {}
 }
 function onSaveIds(){
   try {
-    localStorage.setItem('nc_admin_uid', adminUserId.value.trim())
     if (targetUserId.value) localStorage.setItem('nc_target_uid', targetUserId.value)
     if (targetPlayerId.value) localStorage.setItem('nc_target_pid', targetPlayerId.value)
     alert('Saved')
-  } catch(e) { alert(e?.message || e) }
+  } catch(e) { toast.error(e?.message || e) }
 }
 
 async function loadTitles(){
@@ -592,11 +619,10 @@ async function loadTitles(){
 
 async function onLoadPlayer(){
   try {
-    if (!adminUserId.value) throw new Error('Fill Admin userId')
     const pid = Number(targetPlayerId.value)
     if (!Number.isFinite(pid)) throw new Error('Enter a valid numeric player id')
     const q = encodeURIComponent(String(pid))
-    const resp = await api.get(`/admin/players/search?adminUserId=${encodeURIComponent(adminUserId.value)}&q=${q}&limit=5`)
+    const resp = await api.get(`/admin/players/search?q=${q}&limit=5`)
     const match = (resp.data?.results || []).find((p)=> Number(p.id) === pid)
     if (!match) throw new Error('Player not found')
     targetUserId.value = match.userId
@@ -633,8 +659,7 @@ async function onSearch(){
   try {
     const q = searchQuery.value.trim()
     if (!q) { searchResults.value = []; return }
-    const param = adminUserId.value ? `&adminUserId=${encodeURIComponent(adminUserId.value)}` : ''
-    const res = await api.get(`/admin/players/search?q=${encodeURIComponent(q)}${param}`)
+    const res = await api.get(`/admin/players/search?q=${encodeURIComponent(q)}`)
     searchResults.value = res.data?.results || []
   } catch { searchResults.value = [] }
 }
@@ -651,7 +676,6 @@ async function applyName(){
     const name = newName.value?.trim()
     if (!name) throw new Error('Enter a name (3-32 chars)')
     const body = { targetUserId: t, name }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/player/name', body)
     if (profile.value) profile.value.name = res.data?.name || name
     alert('Name updated')
@@ -663,7 +687,6 @@ async function applyCurrency(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, ...currency.value }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/currency', body)
     alert('Updated: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -672,7 +695,6 @@ async function applyExp(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, expDelta: Number(expDelta.value || 0) }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/xp', body)
     alert('Exp: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -681,7 +703,6 @@ async function applyLevel(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, level: Number(levelSet.value || 1) }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/level', body)
     alert('Level: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -690,7 +711,6 @@ async function applyResources(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, ...resources.value }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/resources', body)
     alert('Resources: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -700,7 +720,6 @@ async function applyBattleStats(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, ...battle.value }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/stats/battle', body)
     // update profile locally
     if (profile.value) profile.value.battleStats = res.data?.battleStats || profile.value.battleStats
@@ -712,7 +731,6 @@ async function applyWorkStats(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, ...work.value }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/stats/work', body)
     if (profile.value) profile.value.workStats = res.data?.workStats || profile.value.workStats
     alert('Work stats set')
@@ -753,7 +771,6 @@ async function invAdd(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, itemId: invItemId.value.trim(), qty: Number(invQty.value || 1) }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.post('/admin/inventory/add', body)
     invStatus.value = 'Inventory: ' + JSON.stringify(res.data || res)
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -762,7 +779,6 @@ async function invRemove(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, itemId: invItemId.value.trim(), qty: Number(invQty.value || 1) }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.post('/admin/inventory/remove', body)
     invStatus.value = 'Inventory: ' + JSON.stringify(res.data || res)
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -937,7 +953,6 @@ async function stockAdd(){
     const t = ensureTarget()
     const body = { targetUserId: t, symbol: stockSymbol.value.trim().toUpperCase(), shares: Number(stockShares.value || 1) }
     if (stockAvgPrice.value != null && stockAvgPrice.value !== '') body.avgPrice = Number(stockAvgPrice.value)
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.post('/admin/stocks/add', body)
     alert('Portfolio: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -946,15 +961,13 @@ async function stockRemove(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, symbol: stockSymbol.value.trim().toUpperCase(), shares: Number(stockShares.value || 1) }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.post('/admin/stocks/remove', body)
     alert('Portfolio: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
 }
 async function stockCrash(){
   try {
-    if (!adminUserId.value) throw new Error('Fill Admin userId')
-    const body = { adminUserId: adminUserId.value }
+    const body = {}
     const sym = stockSymbol.value.trim().toUpperCase()
     if (sym) body.symbol = sym
     const res = await api.post('/admin/stocks/crash', body)
@@ -963,8 +976,7 @@ async function stockCrash(){
 }
 async function stockRocket(){
   try {
-    if (!adminUserId.value) throw new Error('Fill Admin userId')
-    const body = { adminUserId: adminUserId.value }
+    const body = {}
     const sym = stockSymbol.value.trim().toUpperCase()
     if (sym) body.symbol = sym
     const res = await api.post('/admin/stocks/rocket', body)
@@ -983,7 +995,6 @@ async function forceWithdraw(accountId){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, accountId }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.post('/admin/bank/force-withdraw', body)
     alert('Payout: ' + JSON.stringify(res.data || res))
     await loadAccounts()
@@ -992,19 +1003,17 @@ async function forceWithdraw(accountId){
 
 async function generalEnergyMax(){
   try {
-    if (!adminUserId.value) throw new Error('Fill Admin userId')
     const includeNPC = String(generalIncludeNPC.value) === 'true'
-    const res = await api.post('/admin/general/energy-max', { adminUserId: adminUserId.value, includeNPC })
+    const res = await api.post('/admin/general/energy-max', { includeNPC })
     alert(`Energy set to max for ${(res.data?.modified||0)}/${(res.data?.matched||0)} players`)
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
 }
 async function generalGiveMoney(){
   try {
-    if (!adminUserId.value) throw new Error('Fill Admin userId')
     const includeNPC = String(generalIncludeNPC.value) === 'true'
     const amountVal = Number(generalMoneyAmount.value || 0)
     if (!Number.isFinite(amountVal) || amountVal === 0) throw new Error('Enter a non-zero amount')
-    const res = await api.post('/admin/general/give-money', { adminUserId: adminUserId.value, includeNPC, amount: amountVal })
+    const res = await api.post('/admin/general/give-money', { includeNPC, amount: amountVal })
     alert(`Money updated (+${amountVal}) for ${(res.data?.modified||0)}/${(res.data?.matched||0)} players`)
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
 }
@@ -1014,7 +1023,6 @@ async function applyStatus(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, status: modStatus.value }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/player/status', body)
     alert('Status set: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -1023,7 +1031,6 @@ async function applyRole(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, role: modRole.value }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/player/role', body)
     alert('Role set: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -1032,7 +1039,6 @@ async function applyTitle(){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, title: modTitle.value }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/player/title', body)
     alert('Title set: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -1042,8 +1048,7 @@ async function applyTitle(){
 async function cdLoad(){
   try {
     const t = ensureTarget()
-    const param = adminUserId.value ? `?adminUserId=${encodeURIComponent(adminUserId.value)}` : ''
-    const res = await api.get(`/admin/player/cooldowns/${encodeURIComponent(t)}${param}`)
+    const res = await api.get(`/admin/player/cooldowns/${encodeURIComponent(t)}`)
     const cd = res.data?.cooldowns || {}
     const lines = [
       `drugCooldown: ${cd.drugCooldown||0}s`,
@@ -1061,7 +1066,6 @@ async function cdSet(category){
     const t = ensureTarget()
     const map = { drug: cdDrug.value, medical: cdMedical.value, booster: cdBooster.value, alcohol: cdAlcohol.value }
     const body = { targetUserId: t, category, seconds: Number(map[category] || 0) }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.post('/admin/player/cooldowns/set', body)
     alert('Cooldown set: ' + JSON.stringify(res.data || res))
     await cdLoad()
@@ -1071,7 +1075,6 @@ async function cdClear(scope){
   try {
     const t = ensureTarget()
     const body = { targetUserId: t, scope }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.post('/admin/player/cooldowns/clear', body)
     alert('Cooldowns cleared: ' + JSON.stringify(res.data || res))
     await cdLoad()
@@ -1079,9 +1082,8 @@ async function cdClear(scope){
 }
 async function cdResetAll(){
   try {
-    if (!adminUserId.value) throw new Error('Fill Admin userId')
     const includeNPC = String(cdIncludeNPC.value) === 'true'
-    const res = await api.post('/admin/cooldowns/reset-all', { adminUserId: adminUserId.value, includeNPC })
+    const res = await api.post('/admin/cooldowns/reset-all', { includeNPC })
     alert(`Cooldowns reset for ${(res.data?.modified||0)}/${(res.data?.matched||0)} players`)
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
 }
@@ -1089,11 +1091,31 @@ async function cdResetAll(){
 // Database purge (danger)
 async function dbPurge(){
   try {
-    if (!adminUserId.value) throw new Error('Fill Admin userId')
     if (dbConfirm.value.trim() !== 'DROP') throw new Error('Type DROP to confirm')
-    const res = await api.post('/admin/database/purge', { adminUserId: adminUserId.value, confirm: dbConfirm.value.trim() })
+    const res = await api.post('/admin/database/purge', { confirm: dbConfirm.value.trim() })
     alert('Database dropped: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
+}
+
+// Cartel rep
+async function applyCartelRep(){
+  try {
+    const t = ensureTarget()
+    const body = { targetUserId: t }
+    if (cartelRepExact.value != null && cartelRepExact.value !== '') {
+      body.reputation = Number(cartelRepExact.value)
+    } else if (cartelRepLevel.value >= 0) {
+      body.repLevel = cartelRepLevel.value
+    } else {
+      throw new Error('Pick a rank or enter an exact rep value')
+    }
+    const res = await api.patch('/admin/cartel/rep', body)
+    const d = res.data || {}
+    cartelRepMsg.value = `${d.cartelName} → ${d.rankName} (lvl ${d.repLevel}, ${Number(d.reputation).toLocaleString()} rep)`
+  } catch (e) {
+    cartelRepMsg.value = ''
+    alert(e?.response?.data?.error || e?.message || 'Failed')
+  }
 }
 
 // Addiction
@@ -1102,7 +1124,6 @@ async function setAddiction(){
     const t = ensureTarget()
     const val = Math.max(0, Number(addictionValue.value||0))
     const body = { targetUserId: t, value: val }
-    if (adminUserId.value) body.adminUserId = adminUserId.value
     const res = await api.patch('/admin/player/addiction', body)
     alert('Addiction set: ' + JSON.stringify(res.data || res))
   } catch (e) { alert(e?.response?.data?.error || e?.message || 'Failed') }
@@ -1112,19 +1133,20 @@ onMounted(() => { loadSavedIds(); loadTitles(); fetchItems() })
 </script>
 
 <style scoped>
-.admin-container { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
-.page-title { margin: 0 0 12px; }
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; color: var(--text); }
-.card h3 { margin: 0 0 12px; font-size: 18px; color: var(--text); }
-.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
-label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-input, select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: rgba(255,255,255,0.04); color: var(--text); }
-.actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
-button { padding: 8px 12px; background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
+.admin-container { max-width: 1100px; margin: 16px auto; padding: 0 16px; }
+.page-title { margin: 0 0 12px; font-size: 1.1rem; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 2px; padding: 14px; margin: 12px 0; color: var(--text); }
+.card h3 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+input, select { width: 100%; }
+.actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+button { background: var(--accent); color: #fff; border: 1px solid var(--accent-hover); }
+button:hover { background: var(--accent-hover); }
 button.secondary { background: transparent; color: var(--text); border-color: var(--border); }
-.list { margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 8px; font-size: 14px; color: var(--text); }
-.muted { color: var(--muted); font-size: 12px; }
+button.secondary:hover { background: var(--panel-hover); }
+.list { margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 8px; font-size: 12px; }
+.muted { color: var(--muted); font-size: 11px; }
 .inline { display: flex; align-items: end; gap: 8px; flex-wrap: wrap; }
-.list-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
-.pill { padding: 2px 8px; background: rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:999px; font-size:12px; }
+.list-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); }
 </style>

@@ -71,11 +71,12 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import InfoBox from '../components/InfoBox.vue'
 import InfoGrid from '../components/InfoGrid.vue'
-import { usePlayerStore } from '../stores/player'
+import { usePlayer } from '../composables/usePlayer'
+import { fmtMoney } from '../utils/format'
 import api from '../api/client'
 
-const store = usePlayerStore()
-const money = computed(() => `$${Number(store.player?.money || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`)
+const { store, ensurePlayer } = usePlayer()
+const money = computed(() => fmtMoney(store.player?.money))
 const eNow = computed(() => store.player?.energyStats?.energy ?? 0)
 const eMax = computed(() => store.player?.energyStats?.energyMax ?? 0)
 const nNow = computed(() => store.player?.nerveStats?.nerve ?? 0)
@@ -110,7 +111,7 @@ async function loadHome() {
   homeError.value = ''
   imageOk.value = true
   try {
-    const { data } = await api.get('/realestate/home', { params: { userId: store.player.user } })
+    const { data } = await api.get('/realestate/home')
     home.value = data
   } catch (e) {
     homeError.value = e?.response?.data?.error || e?.message || 'Failed to load property'
@@ -128,94 +129,17 @@ watch(() => store.player?.home, () => loadHome())
 </script>
 
 <style scoped>
-/* Property card styles */
-.property-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.property-card__media {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border, #2b2f38);
-  background: #13161c;
-}
-.property-card__media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.property-card__placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-  color: var(--muted, #99a2b2);
-  background: linear-gradient(135deg, #0f1116, #171a21);
-}
-
-.property-card__info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.property-card__row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-.property-card__name {
-  font-size: 1.05rem;
-}
-.property-card__meta {
-  font-size: 0.9rem;
-  color: var(--muted, #99a2b2);
-}
-.property-card__upgrades-title {
-  font-size: 0.85rem;
-  color: var(--muted, #99a2b2);
-  margin-bottom: 4px;
-}
-.property-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border, #2b2f38);
-  background: rgba(255,255,255,0.03);
-  font-size: 0.8rem;
-}
-.chip--ok::before {
-  content: '✓';
-  color: #38d39f;
-  font-weight: 700;
-}
-.property-card__empty {
-  font-size: 0.85rem;
-  color: var(--muted, #99a2b2);
-}
-
-.property-card__actions { margin-top: 8px; }
-.btn { border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.06); padding: 6px 10px; border-radius: 8px; cursor: pointer; color: var(--text, #e8eaf6); text-decoration: none; display: inline-block; }
-.btn--primary { background: #335a3b; color: #a3d977; border-color: #335a3b; }
-
-.property-card__loading, .property-card__error {
-  grid-column: 1 / -1;
-  padding: 12px;
-  color: var(--muted, #99a2b2);
-}
-
-/* No responsive override needed; stacked by default */
+.property-card { display: flex; flex-direction: column; gap: 10px; }
+.property-card__media { width: 100%; aspect-ratio: 16/9; border-radius: 2px; overflow: hidden; border: 1px solid var(--border); background: var(--bg-alt); }
+.property-card__media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.property-card__placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); }
+.property-card__info { display: flex; flex-direction: column; gap: 6px; }
+.property-card__row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; }
+.property-card__name { font-size: 13px; font-weight: 600; }
+.property-card__meta { font-size: 12px; color: var(--muted); }
+.property-card__upgrades-title { font-size: 11px; color: var(--muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+.property-card__chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.property-card__empty { font-size: 12px; color: var(--muted); }
+.property-card__actions { margin-top: 6px; }
+.property-card__loading, .property-card__error { grid-column: 1 / -1; padding: 10px; color: var(--muted); font-size: 12px; }
 </style>

@@ -2,6 +2,7 @@
 const cron = require('node-cron');
 const Player = require('../models/Player');
 const PlayerSnapshot = require('../models/PlayerSnapshot');
+const ts = () => `[${new Date().toTimeString().slice(0,8)}]`;
 const BankAccount = require('../models/Bank');
 const stocksCfg = require('../config/stocks');
 const { getLatestPrice } = require('../services/stockService');
@@ -63,7 +64,7 @@ async function takeSnapshot(){
 function schedulePlayerSnapshots(){
   // Every hour at minute 0
   cron.schedule('0 * * * *', async () => {
-    console.log('[cron] Player snapshots tick (hourly)');
+    console.log(`${ts()} [cron] Player snapshots tick (hourly)`);
     await takeSnapshot().catch(e => console.error('Snapshot error:', e.message));
   });
 }

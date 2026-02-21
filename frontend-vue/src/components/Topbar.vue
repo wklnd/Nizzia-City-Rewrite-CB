@@ -19,6 +19,7 @@
     </div>
     <div class="spacer"></div>
     <div class="actions">
+      <button @click="toggleTheme" :title="isDark ? 'Switch to light' : 'Switch to dark'">{{ isDark ? '[LIGHT]' : '[DARK]' }}</button>
       <button @click="goProfile" title="Profile">Profile</button>
       <button @click="logout" title="Log out">Log out</button>
     </div>
@@ -44,6 +45,15 @@ function goAdmin(){
 }
 const hp = ref(0)
 
+// ── Theme toggle ──
+const isDark = ref(document.documentElement.getAttribute('data-theme') !== 'light')
+function toggleTheme() {
+  const next = isDark.value ? 'light' : 'dark'
+  document.documentElement.setAttribute('data-theme', next)
+  localStorage.setItem('nc_theme', next)
+  isDark.value = next === 'dark'
+}
+
 // Ticker: simple rotation by default, with optional slow scroll
 const tickerMode = ref('scroll') // 'single' | 'scroll'
 const newsItems = ref([
@@ -52,7 +62,10 @@ const newsItems = ref([
   'Happiness increases gym gains.',
   'Jobs pay out daily at 01:00 server time.',
   'Oscar is awesome!',
-  'Lazy? Go and train!'
+  'Lazy? Go and train!',
+  'Bababing, bababing, bababing...',
+  'AAAAHHHH!',
+  'Drugs man, drugs!'
 ])
 const idx = ref(0)
 const tickerText = computed(() => tickerMode.value==='single' ? (newsItems.value[idx.value] || '') : newsItems.value.concat(newsItems.value).join(' — '))
@@ -82,12 +95,8 @@ async function goProfile(){
   }
   if (!hasId(pid)) {
     try {
-      const u = JSON.parse(localStorage.getItem('nc_user') || 'null')
-      const uid = u?._id ?? u?.id
-      if (uid) {
-        const p = await store.loadByUser(uid)
-        pid = p?.id
-      }
+      const p = await store.loadByUser()
+      pid = p?.id
     } catch {}
   }
   if (hasId(pid)) router.push(`/profile/${pid}`)

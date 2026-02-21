@@ -2,6 +2,7 @@
 const mongoose = require('mongoose');
 const Player = require('../models/Player');
 const cron = require('node-cron');
+const ts = () => `[${new Date().toTimeString().slice(0,8)}]`;
 require('dotenv').config();
 
 // Energy regeneration logic
@@ -14,7 +15,7 @@ const regenEnergy = async () => {
     );
     const matched = res.matchedCount ?? res.n ?? 0;
     const modified = res.modifiedCount ?? res.nModified ?? 0;
-    console.log(`Energy regeneration completed. updated=${modified} matched=${matched}`);
+    console.log(`${ts()} Energy regeneration completed. updated=${modified} matched=${matched}`);
   } catch (error) {
     console.error('Error during energy regeneration:', error);
   }
@@ -23,7 +24,7 @@ const regenEnergy = async () => {
 // Schedule the energy regeneration to run every 10 minutes
 const scheduleRegenEnergy = () => {
   cron.schedule('*/10 * * * *', () => {
-    console.log('Running scheduled energy regeneration...');
+    console.log(`${ts()} Running scheduled energy regeneration...`);
     try {
       if (mongoose.connection.readyState !== 1) {
         console.warn('Skipping energy regen: DB not connected');

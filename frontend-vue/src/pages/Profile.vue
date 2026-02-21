@@ -4,7 +4,7 @@
     <p class="muted" v-if="!player && !loading">No data.</p>
 
     <div v-if="loading" class="panel" style="margin-top:12px;">Loading…</div>
-    <div v-else-if="error" class="panel" style="margin-top:12px;color:#ff6b6b;">{{ error }}</div>
+    <div v-else-if="error" class="panel" style="margin-top:12px;color:var(--danger);">{{ error }}</div>
 
     <div v-else>
       <div class="panel profile__head">
@@ -125,6 +125,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api/client'
+import { fmtInt, fmtMoney, fmtStat } from '../utils/format'
 
 const route = useRoute()
 const player = ref(null)
@@ -147,10 +148,6 @@ const battleTotal = computed(() => {
 const workTotal = computed(() => {
   const w = player.value?.workStats || {}; return (w.manuallabor||0)+(w.intelligence||0)+(w.endurance||0)+(w.employeEfficiency||0)
 })
-
-function fmtInt(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 0 }) }
-function fmtMoney(n){ return `$${fmtInt(n)}` }
-function fmtStat(n){ return Number(n||0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
 
 async function load(){
   loading.value = true
@@ -189,7 +186,7 @@ async function loadPet(){
   try {
     const id = route.params.id || new URLSearchParams(location.search).get('id')
     if (!id) { pet.value = { pet: null }; return }
-    const res = await api.get('/pets/my', { params: { userId: id } })
+    const res = await api.get(`/pets/player/${id}`)
     pet.value = res.data || res
   } catch { pet.value = { pet: null } }
   finally { petLoading.value = false }
@@ -219,33 +216,16 @@ watch(() => route.params.id, async () => { await load(); await loadHistory(); aw
 </script>
 
 <style scoped>
-.profile__head { display:flex; align-items:center; justify-content: space-between; gap: 12px; }
-.profile__title { display:flex; align-items:center; gap: 10px; font-size: 18px; }
-.profile__vitals { display:flex; gap: 16px; }
-.profile__grid { margin-top: 12px; display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.kv { list-style:none; padding:0; margin: 6px 0 0 0; }
-.kv li { display:flex; justify-content: space-between; padding: 2px 0; }
-.kv .k { color: var(--muted); }
-.kv .v { font-weight: 600; }
-.table-wrap { width: 100%; overflow: auto; }
-.profile__holdings { max-height: 240px; }
-.tbl { width:100%; border-collapse: collapse; font-size: 13px; }
-.tbl th, .tbl td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
+.profile__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.profile__title { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.profile__vitals { display: flex; gap: 12px; }
+.profile__grid { margin-top: 10px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.profile__holdings { max-height: 220px; }
 .tbl td.num { text-align: right; font-feature-settings: 'tnum'; font-variant-numeric: tabular-nums; }
-.profile__head2 { display:flex; align-items:center; justify-content: space-between; }
-.tabs { display:flex; gap: 6px; }
-.tabs button { padding: 6px 10px; border-radius: 8px; border: 1px solid #555; background: #2b2b2b; color:#fff; cursor:pointer; }
-.tabs button.active { border-color: #5ac8fa; background: #233041; }
-.sparkline { height: 110px; display:flex; align-items: center; justify-content: center; }
-.sparkline svg { width: 100%; height: 100%; }
+.profile__head2 { display: flex; align-items: center; justify-content: space-between; }
 .profile__panel--full { grid-column: 1 / -1; }
-.sparkline__caption { font-size: 12px; margin: 4px 0 6px; }
-.sparkline__scale { display:flex; justify-content: space-between; font-size: 11px; margin-top: 4px; }
-</style>
-<style scoped>
-.pet-owned { display:flex; gap: 12px; align-items: center; }
-.pet-img { width: 120px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background:#2b2b2b; }
-.pet-title { font-size: 15px; margin-bottom: 6px; }
-.pet-tags { display:flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-.pill { display:inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.12); background:#1e2433; font-size: 12px; }
+.pet-owned { display: flex; gap: 10px; align-items: center; }
+.pet-img { width: 100px; height: 66px; object-fit: cover; border-radius: 2px; border: 1px solid var(--border); background: var(--bg-alt); }
+.pet-title { font-size: 13px; margin-bottom: 4px; }
+.pet-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
 </style>

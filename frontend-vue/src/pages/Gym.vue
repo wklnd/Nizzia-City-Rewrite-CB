@@ -56,7 +56,7 @@
 
               <div class="gym__actions">
                 <button class="btn" @click="train" :disabled="busy || !canTrainStat || energyPerTrain<1 || energyPerTrain>energy">{{ busy? 'Training…' : 'Train' }}</button>
-                <span class="msg" :class="{ err: !!error, ok: !!okMsg }">{{ error || okMsg }}</span>
+                <span class="msg" :class="{ err: false, ok: false }"></span>
               </div>
             </div>
           </div>
@@ -103,15 +103,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '../api/client'
-import { usePlayerStore } from '../stores/player'
+import { usePlayer } from '../composables/usePlayer'
+import { useToast } from '../composables/useToast'
+import { fmtInt, fmtStat } from '../utils/format'
 
 const loading = ref(true)
 const busy = ref(false)
-const error = ref('')
-const okMsg = ref('')
-
-const user = ref(null)
-const store = usePlayerStore()
+const { store, ensurePlayer, reloadPlayer } = usePlayer()
+const toast = useToast()
 
 const stat = ref('strength')
 const gyms = ref([])
@@ -124,128 +123,110 @@ const canTrainStat = computed(() => {
   const v = g.gains?.[stat.value]
   return typeof v === 'number' && v > 0
 })
-function supports(type){
+function supports(type) {
   const g = selectedGym.value
   if (!g) return false
   const v = g.gains?.[type]
   return typeof v === 'number' && v > 0
 }
-async function selectGym(id){
+async function selectGym(id) {
   const g = gyms.value.find(x => x.id === id)
   if (!g || g.locked) return
-  await api.post('/gym/select', { userId: user.value?._id, gymId: id })
+  await api.post('/gym/select', { gymId: id })
   selectedGymId.value = id
 }
-async function unlock(id){
-  error.value = ''; okMsg.value = ''
+async function unlock(id) {
   try {
-    const res = await api.post('/gym/unlock', { userId: user.value?._id, gymId: id })
-    const data = res.data || res
-    // Refresh catalog
+    const { data } = await api.post('/gym/unlock', { gymId: id })
+    store.mergePartial({ money: data.money })
     await loadCatalog()
-    await store.loadByUser(user.value?._id)
-    okMsg.value = 'Gym unlocked.'
-  } catch(e){
-    error.value = e?.response?.data?.error || e?.message || 'Failed to unlock'
+    toast.ok('Gym unlocked.')
+  } catch (e) {
+    toast.error(e?.response?.data?.error || e?.message || 'Failed to unlock')
   }
 }
 const gain = ref(null)
 
-const stats = computed(() => store.player?.battleStats || { strength:0, speed:0, dexterity:0, defense:0 })
+const stats = computed(() => store.player?.battleStats || { strength: 0, speed: 0, dexterity: 0, defense: 0 })
 const energy = computed(() => store.player?.energyStats?.energy ?? 0)
 const energyMax = computed(() => store.player?.energyStats?.energyMax ?? 0)
 const happy = computed(() => store.player?.happiness?.happy ?? 0)
 const happyMax = computed(() => store.player?.happiness?.happyMax ?? 0)
 
-function fmtInt(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 0 }) }
-function fmtStat(n){ return Number(n||0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
-
-async function loadCatalog(){
-  const res = await api.get('/gym/catalog', { params: { userId: user.value?._id } })
+async function loadCatalog() {
+  const res = await api.get('/gym/catalog')
   const data = res.data || res
   gyms.value = data.gyms || []
   selectedGymId.value = data.selectedGymId || 1
 }
 
-async function load(){
+async function load() {
   loading.value = true
   try {
-    try { user.value = JSON.parse(localStorage.getItem('nc_user')||'null') } catch {}
-    if (!user.value?._id) throw new Error('Not logged in')
-    await store.loadByUser(user.value._id)
+    if (!store.player) throw new Error('Not logged in')
+    await reloadPlayer()
     await loadCatalog()
-  } catch(e){
-    error.value = e?.response?.data?.error || e?.message || 'Failed to load player'
+  } catch (e) {
+    toast.error(e?.response?.data?.error || e?.message || 'Failed to load player')
   } finally { loading.value = false }
 }
 
-async function calcGain(){
-  error.value = ''; okMsg.value = ''; gain.value = null
+async function calcGain() {
+  gain.value = null
   try {
-    const body = { userId: user.value?._id, statType: stat.value }
-  body.energyPerTrain = Math.max(1, Math.floor(Number(energyPerTrain.value||1)))
+    const body = { statType: stat.value, energyPerTrain: Math.max(1, Math.floor(Number(energyPerTrain.value || 1))) }
     const res = await api.post('/gym/calculate', body)
-    const data = res.data || res
-    gain.value = Number(data.gain || 0)
-  } catch(e){
-    error.value = e?.response?.data?.error || e?.message || 'Failed to calculate'
+    gain.value = Number((res.data || res).gain || 0)
+  } catch (e) {
+    toast.error(e?.response?.data?.error || e?.message || 'Failed to calculate')
   }
 }
 
-async function train(){
-  error.value = ''; okMsg.value = ''
+async function train() {
   busy.value = true
   try {
-  const body = { userId: user.value?._id, statType: stat.value, energyPerTrain: Math.max(1, Math.floor(Number(energyPerTrain.value||1))) }
-    const res = await api.post('/gym/train', body)
-    const data = res.data || res
-    // Patch local player state with response
-    okMsg.value = 'Training complete.'
-    // Reload from backend so Sidebar and others update via the store
-    await store.loadByUser(user.value?._id)
+    const body = { statType: stat.value, energyPerTrain: Math.max(1, Math.floor(Number(energyPerTrain.value || 1))) }
+    const { data } = await api.post('/gym/train', body)
+    toast.ok('Training complete.')
+    store.mergePartial({
+      battleStats: data.updatedStats,
+      energyStats: { ...(store.player?.energyStats || {}), energy: data.remainingEnergy },
+      happiness: { ...(store.player?.happiness || {}), happy: data.remainingHappiness },
+    })
     await calcGain()
-  } catch(e){
-    error.value = e?.response?.data?.error || e?.message || 'Training failed'
+  } catch (e) {
+    toast.error(e?.response?.data?.error || e?.message || 'Training failed')
   } finally { busy.value = false }
 }
 
-onMounted(async () => { await load(); await calcGain() })
+function useAllEnergy() { energyPerTrain.value = Math.max(1, Number(energy.value || 0)) }
 
-function useAllEnergy(){
-  energyPerTrain.value = Math.max(1, Number(energy.value||0))
-}
+onMounted(async () => { await ensurePlayer(); await load(); await calcGain() })
 </script>
 
 <style scoped>
-.gym__grid { display:grid; grid-template-columns: 2fr 1fr; gap: 12px; }
-.gym__stats { display:flex; gap: 16px; margin-bottom: 10px; }
-.gym__controls { display:flex; flex-direction: column; gap: 10px; }
-.radio-row { display:flex; gap: 12px; flex-wrap: wrap; }
-.block { display:block; }
-.lbl { display:block; font-size:12px; color: var(--muted); margin-bottom: 4px; }
-input[type="number"], select { padding: 8px; border-radius: 6px; border: 1px solid #555; background: #2b2b2b; color: #fff; }
-.gym__meta .gym__badge { display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background: rgba(255,255,255,0.04); }
-.gym__gain { display:flex; align-items:center; gap: 12px; }
-.gym__actions { display:flex; align-items:center; gap: 12px; }
-.msg { font-size: 12px; }
-.msg.ok { color: #a3d977; }
-.msg.err { color: #ff6b6b; }
+.gym__grid { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; }
+.gym__stats { display: flex; gap: 14px; margin-bottom: 8px; }
+.gym__controls { display: flex; flex-direction: column; gap: 8px; }
+.radio-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.block { display: block; }
+.lbl { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+input[type="number"], select { padding: 6px 8px; border-radius: 2px; }
+.gym__meta .gym__badge { display: inline-block; padding: 4px 8px; border-radius: 2px; border: 1px solid var(--border); background: var(--bg-alt); font-size: 12px; }
+.gym__gain { display: flex; align-items: center; gap: 10px; }
+.gym__actions { display: flex; align-items: center; gap: 10px; }
 
-.kv { list-style:none; padding:0; margin:6px 0 0 0; }
-.kv li { display:flex; justify-content: space-between; padding: 4px 0; }
-.kv .k { color: var(--muted); }
-.kv .v { font-weight: 600; }
-
-.gyms__grid { display:grid; grid-template-columns: repeat(8, 1fr); gap: 10px; }
-.gym-card { position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; display:flex; flex-direction:column; align-items:flex-start; gap:4px; cursor: pointer; transition: border-color 120ms ease, background 120ms ease, opacity 120ms ease; }
-.gym-card.selected { border-color: #5ac8fa; background: rgba(90,200,250,0.08); }
-.gym-card.locked { opacity: 0.5; cursor: not-allowed; }
+.gyms__grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.gym-card { position: relative; background: var(--panel); border: 1px solid var(--border); border-radius: 2px; padding: 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; cursor: pointer; transition: border-color 80ms, background 80ms; font-size: 12px; }
+.gym-card:hover { border-color: var(--accent); background: var(--accent-muted); }
+.gym-card.selected { border-color: var(--accent); background: var(--accent-muted); }
+.gym-card.locked { opacity: 0.35; cursor: not-allowed; }
 .gym-card__name { font-weight: 600; }
-.gym-card__soon { font-size: 12px; }
-.gym-card__lock { position: absolute; top: 8px; right: 8px; font-size: 12px; }
+.gym-card__soon { font-size: 11px; color: var(--muted); }
+.gym-card__lock { position: absolute; top: 6px; right: 6px; font-size: 11px; }
 
-@media (max-width: 1200px){
-  .gyms__grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+@media (max-width: 1200px) {
+  .gyms__grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); }
   .gym__grid { grid-template-columns: 1fr; }
 }
 </style>

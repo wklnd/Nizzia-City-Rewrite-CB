@@ -12,18 +12,14 @@ function findLocationById(id) {
 
 async function resolvePlayer(userId) {
 	if (!userId) return null
-	const n = Number(userId)
-	let player = null
-	if (!Number.isNaN(n)) player = await Player.findOne({ id: n })
-	if (!player) player = await Player.findOne({ user: userId })
-	return player
+	return Player.findOne({ user: userId })
 }
 
-// POST /api/crime/search-for-cash { userId, locationId? }
+// POST /api/crime/search-for-cash { locationId }
 async function searchForCash(req, res) {
 	try {
-		const { userId, locationId } = req.body || {}
-		if (!userId) return res.status(400).json({ error: 'userId is required' })
+		const userId = req.authUserId
+		const { locationId } = req.body || {}
 		const player = await resolvePlayer(userId)
 		if (!player) return res.status(404).json({ error: 'Player not found' })
 
@@ -96,6 +92,7 @@ async function searchForCash(req, res) {
 
 		// Apply gains and costs
 				if (outcome === 'success') {
+				player.$locals._txMeta = { type: 'crime', description: `Crime payout` };
 				player.money = Number((Number(player.money || 0) + Number(awarded.money || 0)).toFixed(2))
 			}
 		if (player.nerveStats) player.nerveStats.nerve = Math.max(0, Number(nerve - nerveCost))

@@ -10,7 +10,7 @@
         <div><span class="k">Cash</span><span class="v">{{ fmtMoney(store.player?.money || 0) }}</span></div>
         <div><span class="k">Home</span><span class="v">{{ home }}</span></div>
       </div>
-      <div v-if="!hasVault" class="msg msg--warn u-mt-8">
+      <div v-if="!hasVault" class="msg err u-mt-8">
         Your active home doesn't have the Vault upgrade. Visit Real Estate to install it.
       </div>
     </div>
@@ -20,7 +20,7 @@
         <h3>Deposit</h3>
         <div class="form">
           <input class="input" type="number" min="1" v-model.number="depositAmt" />
-          <button class="btn" @click="doDeposit" :disabled="busy || depositAmt<=0">Deposit</button>
+          <button class="btn btn--primary" @click="doDeposit" :disabled="busy || depositAmt<=0">Deposit</button>
         </div>
       </div>
       <div class="panel">
@@ -31,84 +31,58 @@
         </div>
       </div>
     </div>
-
-    <div v-if="msg" class="u-mt-8 msg" :class="{ ok: msgOk, err: !msgOk }">{{ msg }}</div>
   </section>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../api/client'
-import { usePlayerStore } from '../stores/player'
+import { usePlayer } from '../composables/usePlayer'
+import { useToast } from '../composables/useToast'
+import { fmtMoney } from '../utils/format'
 
-const store = usePlayerStore()
+const { store, ensurePlayer, reloadPlayer } = usePlayer()
+const toast = useToast()
 const balance = ref(0)
 const hasVault = ref(false)
 const home = ref('')
 const busy = ref(false)
-const msg = ref('')
-const msgOk = ref(true)
 const depositAmt = ref(1000)
 const withdrawAmt = ref(1000)
 
-function fmtMoney(n){ return `$${Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 0 })}` }
-function getUserId(){ try { const u=JSON.parse(localStorage.getItem('nc_user')||'null'); return u?._id || u?.id || null } catch { return null } }
-
-async function ensurePlayer(){
-  if (store.player?.user) return
-  try {
-    const raw = localStorage.getItem('nc_user')
-    if (raw){ let u = raw; try { const o=JSON.parse(raw); u = o?._id || o?.id || raw } catch {}
-      await store.loadByUser(u) }
-  } catch {}
-}
-
-async function load(){
-  const uid = getUserId(); if (!uid) return
-  const { data } = await api.get(`/vault/${uid}`)
-  balance.value = Number(data?.balance||0)
+async function load() {
+  const { data } = await api.get('/vault')
+  balance.value = Number(data?.balance || 0)
   hasVault.value = !!data?.hasVault
   home.value = data?.home || ''
 }
 
-async function doDeposit(){
-  busy.value = true; msg.value=''
-  try{
-    const uid = getUserId(); if (!uid) throw new Error('Not authenticated')
-    const { data } = await api.post('/vault/deposit', { userId: uid, amount: depositAmt.value })
-    balance.value = Number(data?.balance||0)
-    await store.loadByUser(store.player.user)
-    msgOk.value = true; msg.value = 'Deposited.'
-  } catch(e){ msgOk.value=false; msg.value = e?.response?.data?.error || e?.message || 'Failed' }
-  finally{ busy.value=false }
+async function doDeposit() {
+  busy.value = true
+  try {
+    const { data } = await api.post('/vault/deposit', { amount: depositAmt.value })
+    balance.value = Number(data?.balance || 0)
+    store.mergePartial({ money: data.money })
+    toast.ok('Deposited.')
+  } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Failed') }
+  finally { busy.value = false }
 }
 
-async function doWithdraw(){
-  busy.value = true; msg.value=''
-  try{
-    const uid = getUserId(); if (!uid) throw new Error('Not authenticated')
-    const { data } = await api.post('/vault/withdraw', { userId: uid, amount: withdrawAmt.value })
-    balance.value = Number(data?.balance||0)
-    await store.loadByUser(store.player.user)
-    msgOk.value = true; msg.value = 'Withdrawn.'
-  } catch(e){ msgOk.value=false; msg.value = e?.response?.data?.error || e?.message || 'Failed' }
-  finally{ busy.value=false }
+async function doWithdraw() {
+  busy.value = true
+  try {
+    const { data } = await api.post('/vault/withdraw', { amount: withdrawAmt.value })
+    balance.value = Number(data?.balance || 0)
+    store.mergePartial({ money: data.money })
+    toast.ok('Withdrawn.')
+  } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Failed') }
+  finally { busy.value = false }
 }
 
 onMounted(async () => { await ensurePlayer(); await load() })
 </script>
 
 <style scoped>
-.kv { display:grid; grid-template-columns: 160px 1fr; gap: 6px; }
-.kv .k { color: var(--muted, #99a2b2); }
-.kv .v { font-weight: 600; }
-.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-.panel { border: 1px solid var(--border, #2b2f38); border-radius: 8px; padding: 10px; background: var(--panel, #171a2b); }
-.form { display:flex; gap: 8px; align-items: center; }
-.input { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border, rgba(255,255,255,0.18)); background:#0f1421; color: var(--text, #e8eaf6); }
-.btn { border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.06); padding: 6px 10px; border-radius: 8px; cursor: pointer; color: var(--text, #e8eaf6); }
-.msg { padding:8px 10px; border-radius: 8px; }
-.msg.ok { background: rgba(46,204,113,0.1); border: 1px solid rgba(46,204,113,0.4); }
-.msg.err { background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.4); }
-.msg--warn { background: rgba(241,196,15,0.1); border: 1px solid rgba(241,196,15,0.4); }
+.vault { max-width: 600px; margin: 0 auto; }
+.form { display: flex; gap: 6px; align-items: center; }
 </style>

@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { spinWheel } = require('../controllers/casinoController');
-const { getWheels } = require('../controllers/casinoController');
+const { requireAuth } = require('../middleware/authUser');
+const { spinWheel, getWheels } = require('../controllers/casinoController');
 
 router.get('/wheels', getWheels);
-router.post('/spin', spinWheel);
+router.post('/spin', requireAuth, spinWheel);
 
 module.exports = router;

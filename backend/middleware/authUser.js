@@ -19,4 +19,12 @@ function attachAuth(req, _res, next) {
   next();
 }
 
-module.exports = { attachAuth };
+// Reject with 401 when no valid token was provided.
+function requireAuth(req, res, next) {
+  if (!req.authUserId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  next();
+}
+
+module.exports = { attachAuth, requireAuth };

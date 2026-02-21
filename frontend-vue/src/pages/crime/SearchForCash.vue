@@ -44,31 +44,17 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { usePlayerStore } from '../../stores/player'
 import api from '../../api/client'
+import { usePlayer } from '../../composables/usePlayer'
+import { useToast } from '../../composables/useToast'
+import { fmtInt as fmt } from '../../utils/format'
 
-const store = usePlayerStore()
-const router = useRouter()
+const { store, ensurePlayer } = usePlayer()
+const toast = useToast()
 const busy = ref(false)
 const last = ref(null)
 const locations = ref([])
 const selLoc = ref('')
-
-function fmt(n){ return Number(n||0).toLocaleString() }
-
-async function ensurePlayer(){
-  if (store.player?.user) return
-  try {
-    const cached = JSON.parse(localStorage.getItem('nc_player')||'null')
-    if (cached?.user) { store.setPlayer(cached); return }
-  } catch {}
-  try {
-    const u = JSON.parse(localStorage.getItem('nc_user')||'null')
-    const uid = u?._id ?? u?.id
-    if (uid) await store.loadByUser(uid)
-  } catch {}
-}
 
 async function loadLocations(){
   try {
@@ -82,13 +68,12 @@ async function act(){
   if (!store.player?.user) return
   busy.value = true
   try {
-    const payload = { userId: store.player.user, locationId: selLoc.value }
-    const { data } = await api.post('/crime/search-for-cash', payload)
+    const { data } = await api.post('/crime/search-for-cash', { locationId: selLoc.value })
     last.value = data
-    await store.loadByUser(store.player.user)
+    store.mergePartial({ money: data.money })
+    if (store.player.nerveStats) store.player.nerveStats.nerve = data.nerve
   } catch (e) {
-    const msg = e?.response?.data?.error || e?.message || 'Failed'
-    last.value = { error: msg }
+    toast.error(e?.response?.data?.error || e?.message || 'Failed')
   } finally { busy.value = false }
 }
 
@@ -96,18 +81,15 @@ onMounted(async () => { await ensurePlayer(); await loadLocations() })
 </script>
 
 <style scoped>
-.crime-sfc { max-width: 800px; margin: 24px auto; padding: 0 16px; }
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; color: var(--text); }
-.row { display:flex; gap: 16px; margin: 8px 0; color: var(--muted) }
-.stat { font-size: 12px; }
-.locations { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 12px 0; }
-.loc { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: left; }
-.loc.active { outline: 2px solid var(--accent); }
-.loc__name { font-weight: 600; margin-bottom: 6px; }
-.pop { background: #222; border: 1px solid var(--border); border-radius: 6px; height: 8px; overflow: hidden; }
-.pop__bar { background: var(--accent); height: 100%; width: 0%; transition: width .2s ease-in-out; }
-.result { margin-top: 10px; font-size: 14px; }
-.error { color: #ff5f73; }
-button { padding: 8px 12px; background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px; cursor:pointer }
-button:disabled { opacity: .6; cursor: not-allowed }
+.crime-sfc { max-width: 800px; margin: 16px auto; padding: 0 16px; }
+.row { display: flex; gap: 12px; margin: 6px 0; color: var(--muted); }
+.stat { font-size: 11px; }
+.locations { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin: 10px 0; }
+.loc { background: var(--bg-alt); color: var(--text); border: 1px solid var(--border); border-radius: 2px; padding: 8px; text-align: left; cursor: pointer; transition: border-color 80ms; font-size: 12px; }
+.loc:hover { border-color: var(--accent); }
+.loc.active { border-color: var(--accent); background: var(--accent-muted); }
+.loc__name { font-weight: 600; margin-bottom: 4px; }
+.pop { background: var(--bar-track); border: 1px solid var(--border); border-radius: 2px; height: 6px; overflow: hidden; }
+.pop__bar { background: var(--accent); height: 100%; width: 0%; transition: width 0.2s ease; }
+.result { margin-top: 8px; font-size: 13px; }
 </style>

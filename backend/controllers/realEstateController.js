@@ -61,21 +61,11 @@ async function ensureStarterProperty(player, PROPS){
   await player.save();
 }
 
-function resolvePlayerByAny(req){
-  const { userId } = req.body || req.query || {};
-  return userId;
-}
-
 async function getCatalog(req, res){
   try {
     const PROPS = await propertyService.getCatalog();
-    const userId = resolvePlayerByAny(req);
-    let player = null;
-    if (userId) {
-      const n = Number(userId);
-      if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-      if (!player) player = await Player.findOne({ user: userId });
-    }
+    const userId = req.authUserId;
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     await ensureStarterProperty(player, PROPS);
     // Include pet happiness bonus when reporting stats
@@ -134,20 +124,20 @@ async function getCatalog(req, res){
 
 async function buyProperty(req, res){
   try {
-    const { userId, propertyId, setActive } = req.body;
+    const userId = req.authUserId;
+    const { propertyId, setActive } = req.body;
     const PROPS = await propertyService.getCatalog();
-    if (!userId || !propertyId) return res.status(400).json({ error: 'userId and propertyId are required' });
+    if (!propertyId) return res.status(400).json({ error: 'propertyId is required' });
   const def = PROPS[propertyId];
     if (!def) return res.status(400).json({ error: 'Invalid propertyId' });
   if (def.market === false) return res.status(400).json({ error: 'This property is not available on the market' });
-    let player = null; const n = Number(userId);
-    if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-    if (!player) player = await Player.findOne({ user: userId });
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
   await ensureStarterProperty(player, PROPS);
   // Allow owning multiple of the same property; remove single-ownership restriction
     const cost = Number(def.cost||0);
     if (Number(player.money||0) < cost) return res.status(400).json({ error: 'Not enough money' });
+    player.$locals._txMeta = { type: 'property', description: `Bought property: ${def.name || propertyId}` };
     player.money = Number(player.money||0) - cost;
     player.properties.push({ propertyId, upgrades: {}, acquiredAt: new Date() });
     if (setActive) player.home = propertyId;
@@ -167,13 +157,12 @@ async function buyProperty(req, res){
 
 async function sellProperty(req, res){
   try {
-    const { userId, propertyId } = req.body;
+    const userId = req.authUserId;
+    const { propertyId } = req.body;
     const PROPS = await propertyService.getCatalog();
-    if (!userId || !propertyId) return res.status(400).json({ error: 'userId and propertyId are required' });
+    if (!propertyId) return res.status(400).json({ error: 'propertyId is required' });
     if (propertyId === 'trailer') return res.status(400).json({ error: 'Cannot sell your starter trailer' });
-    let player = null; const n = Number(userId);
-    if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-    if (!player) player = await Player.findOne({ user: userId });
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     await ensureStarterProperty(player, PROPS);
     if (player.home === propertyId) return res.status(400).json({ error: 'Set a different home before selling this property' });
@@ -181,6 +170,7 @@ async function sellProperty(req, res){
   if (!entry) return res.status(404).json({ error: 'Property not owned' });
   const def = PROPS[propertyId];
   const refund = Math.floor((def.cost||0) * 0.5); // Assumption: 50% refund
+  player.$locals._txMeta = { type: 'property', description: `Sold property: ${def.name || propertyId}` };
   player.money = Number(player.money||0) + refund;
   // Remove only one instance of this propertyId
   const arr = Array.from(player.properties || [])
@@ -196,11 +186,10 @@ async function sellProperty(req, res){
 
 async function setActiveProperty(req, res){
   try {
-    const { userId, propertyId } = req.body;
-    if (!userId || !propertyId) return res.status(400).json({ error: 'userId and propertyId are required' });
-    let player = null; const n = Number(userId);
-    if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-    if (!player) player = await Player.findOne({ user: userId });
+    const userId = req.authUserId;
+    const { propertyId } = req.body;
+    if (!propertyId) return res.status(400).json({ error: 'propertyId is required' });
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     await ensureStarterProperty(player, await propertyService.getCatalog());
     const entry = getOwnedEntry(player, propertyId);
@@ -219,12 +208,11 @@ async function setActiveProperty(req, res){
 
 async function buyUpgrade(req, res){
   try {
-    const { userId, propertyId, upgradeId } = req.body;
+    const userId = req.authUserId;
+    const { propertyId, upgradeId } = req.body;
     const PROPS = await propertyService.getCatalog();
-    if (!userId || !propertyId || !upgradeId) return res.status(400).json({ error: 'userId, propertyId, and upgradeId are required' });
-    let player = null; const n = Number(userId);
-    if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-    if (!player) player = await Player.findOne({ user: userId });
+    if (!propertyId || !upgradeId) return res.status(400).json({ error: 'propertyId and upgradeId are required' });
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     await ensureStarterProperty(player, PROPS);
 
@@ -249,6 +237,7 @@ async function buyUpgrade(req, res){
     if (Number(player.money||0) < cost) return res.status(400).json({ error: 'Not enough money' });
 
     // Deduct funds and apply level
+    player.$locals._txMeta = { type: 'property', description: `Property upgrade: ${upDef.name || upgradeId}` };
     player.money = Number(player.money||0) - cost;
     if (!entry.upgrades) entry.upgrades = new Map();
     if (typeof entry.upgrades.set === 'function') {
@@ -276,12 +265,9 @@ async function buyUpgrade(req, res){
 
 async function getHome(req, res){
   try {
-    const { userId } = Object.assign({}, req.query, req.body);
+    const userId = req.authUserId;
     const PROPS = await propertyService.getCatalog();
-    if (!userId) return res.status(400).json({ error: 'userId is required' });
-    let player = null; const n = Number(userId);
-    if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-    if (!player) player = await Player.findOne({ user: userId });
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     await ensureStarterProperty(player, PROPS);
   const homeId = player.home || 'trailer';
@@ -322,12 +308,9 @@ async function getHome(req, res){
 
 async function payUpkeep(req, res){
   try {
-    const { userId } = req.body || {};
+    const userId = req.authUserId;
     const PROPS = await propertyService.getCatalog();
-    if (!userId) return res.status(400).json({ error: 'userId is required' });
-    let player = null; const n = Number(userId);
-    if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-    if (!player) player = await Player.findOne({ user: userId });
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     await ensureStarterProperty(player, PROPS);
     const homeId = player.home || 'trailer';

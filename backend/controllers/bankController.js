@@ -12,10 +12,10 @@ async function rates(req, res) {
   }
 }
 
-// GET /api/bank/accounts/:userId
+// GET /api/bank/accounts
 async function listAccounts(req, res) {
   try {
-    const { userId } = req.params;
+    const userId = req.authUserId;
     const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     const accounts = await BankAccount.find({ player: player._id }).sort({ startDate: -1 }).lean();
@@ -23,12 +23,12 @@ async function listAccounts(req, res) {
   } catch (e) { return res.status(500).json({ error: e.message }); }
 }
 
-// POST /api/bank/deposit { userId, amount, period }
+// POST /api/bank/deposit { amount, period }
 async function deposit(req, res) {
   try {
-    const { userId, amount, period } = req.body;
+    const userId = req.authUserId;
+    const { amount, period } = req.body;
     const amt = Math.floor(Number(amount || 0));
-    if (!userId) return res.status(400).json({ error: 'userId is required' });
     if (!PERIODS[period]) return res.status(400).json({ error: 'Invalid period' });
     if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ error: 'Invalid amount' });
     if (amt > 2000000000) return res.status(400).json({ error: 'Max deposit is $2,000,000,000' });
@@ -56,6 +56,7 @@ async function deposit(req, res) {
     });
     await acct.save();
 
+    player.$locals._txMeta = { type: 'bank_deposit', description: `Bank deposit (${period})` };
     player.money = Number((player.money - amt).toFixed(2));
     await player.save();
 
@@ -63,11 +64,12 @@ async function deposit(req, res) {
   } catch (e) { return res.status(500).json({ error: e.message }); }
 }
 
-// POST /api/bank/withdraw { userId, accountId }
+// POST /api/bank/withdraw { accountId }
 async function withdraw(req, res) {
   try {
-    const { userId, accountId } = req.body;
-    if (!userId || !accountId) return res.status(400).json({ error: 'userId and accountId are required' });
+    const userId = req.authUserId;
+    const { accountId } = req.body;
+    if (!accountId) return res.status(400).json({ error: 'accountId is required' });
     const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     const acct = await BankAccount.findOne({ _id: accountId, player: player._id });
@@ -78,6 +80,7 @@ async function withdraw(req, res) {
     const { total, interest } = calculatePayout(acct.depositedAmount, acct.interestRate, acct.period);
     acct.isWithdrawn = true;
     await acct.save();
+    player.$locals._txMeta = { type: 'bank_withdraw', description: `Bank withdrawal ($${acct.depositedAmount.toLocaleString()} + $${interest.toLocaleString()} interest)` };
     player.money = Number(((player.money || 0) + total).toFixed(2));
     await player.save();
     return res.json({ money: player.money, payout: { principal: acct.depositedAmount, interest, total }, account: acct.toObject() });

@@ -7,7 +7,8 @@ const getAllItems = async (req, res) => {
 };
 
 const useItem = async (req, res) => {
-  const { userId, itemId } = req.body;
+  const userId = req.authUserId;
+  const { itemId } = req.body;
   try {
     const result = await itemService.applyItem(userId, itemId);
     res.json(result);

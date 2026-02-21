@@ -49,7 +49,8 @@ async function onSubmit(){
 </script>
 
 <style scoped>
-input { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #555; background: #2b2b2b; color: #fff; }
-label { display:block; font-size: 12px; opacity: 0.85; }
-.btn { padding: 10px 12px; border-radius: 6px; border: 1px solid #3d8b40; background: #4caf50; color: #fff; cursor: pointer; }
+input { width: 100%; }
+label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.btn { padding: 8px 12px; background: var(--accent); color: #fff; border: 1px solid var(--accent-hover); cursor: pointer; }
+.btn:hover { background: var(--accent-hover); }
 </style>

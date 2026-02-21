@@ -14,13 +14,14 @@ async function getNextPlayerId() {
 }
 
 // POST /api/player/create
-// Body: { name, gender, userId }
+// Body: { name, gender }
 // Returns: created player document
 async function createPlayer(req, res) {
   try {
-    const { name, gender, userId } = req.body;
-    if (!name || !gender || !userId) {
-      return res.status(400).json({ error: 'name, gender and userId are required' });
+    const userId = req.authUserId;
+    const { name, gender } = req.body;
+    if (!name || !gender) {
+      return res.status(400).json({ error: 'name and gender are required' });
     }
     // ensure one player per user (optional rule)
     const existingForUser = await Player.findOne({ user: userId });
@@ -38,10 +39,10 @@ async function createPlayer(req, res) {
   }
 }
 
-// GET /api/player/by-user/:userId
+// GET /api/player/me
 async function getPlayerByUser(req, res) {
   try {
-    const { userId } = req.params;
+    const userId = req.authUserId;
     const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     return res.json(player);

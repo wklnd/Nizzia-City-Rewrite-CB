@@ -37,15 +37,19 @@
       <li><RouterLink to="/inventory">Inventory</RouterLink></li>
       <li><RouterLink to="/city">City</RouterLink></li>
       <li><RouterLink to="/job">Job</RouterLink></li>
+      <li><RouterLink to="/education">Education</RouterLink></li>
       <li><RouterLink to="/gym">Gym</RouterLink></li>
       <li><RouterLink to="/casino">Casino</RouterLink></li>
       <li><RouterLink to="/stocks">Stocks</RouterLink></li>
       <li><RouterLink to="/crimes">Crimes</RouterLink></li>
       <li><RouterLink to="/money">Money</RouterLink></li>
       <li><RouterLink to="/property">Property</RouterLink></li>
+      <li v-if="hasWarehouse"><RouterLink to="/grow">Grow Operation</RouterLink></li>
+      <li v-if="hasBusiness"><RouterLink to="/real-estate?tab=businesses">Business</RouterLink></li>
       <li><RouterLink to="/pets">Pets</RouterLink></li>
       <li><RouterLink to="/market">Market</RouterLink></li>
       <li><RouterLink to="/vault">Vault</RouterLink></li>
+      <li v-if="hasCartel"><RouterLink to="/cartel">Drug Empire</RouterLink></li>
     </ul>
 
     <div id="dev-menu" class="info u-mt-16" v-show="isDev">
@@ -71,7 +75,6 @@
           <button @click="doDev('add-nerve', devNerve)" class="btn">Add</button>
         </div>
       </div>
-      <div class="u-mt-8 msg" :class="{ ok: devMsgOk, err: !devMsgOk }">{{ devMsg }}</div>
     </div>
   </aside>
 </template>
@@ -80,10 +83,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import api from '../api/client'
-import { usePlayerStore } from '../stores/player'
+import { usePlayer } from '../composables/usePlayer'
+import { useToast } from '../composables/useToast'
+import { fmtMoney, fmtDuration } from '../utils/format'
 
-const store = usePlayerStore()
-const user = ref(null)
+const { store, ensurePlayer } = usePlayer()
+const toast = useToast()
 const router = useRouter()
 
 const eNow = computed(() => store.player?.energyStats?.energy ?? 0)
@@ -101,155 +106,167 @@ const isDev = computed(() => store.player?.playerRole === 'Developer')
 const devMoney = ref(100000)
 const devEnergy = ref(10)
 const devNerve = ref(5)
-const devMsg = ref('')
-const devMsgOk = ref(true)
 
 function pct(cur, max){ return max > 0 ? Math.min(100, Math.round((cur/max)*100)) : 0 }
-function fmtMoney(n){ return `$${Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 0 })}` }
 
-async function load(){
-  try { user.value = JSON.parse(localStorage.getItem('nc_user')||'null') } catch {}
-  if (!user.value?._id) return
-  try {
-    await store.loadByUser(user.value._id)
-  } catch (e) {
-    if (e?.response?.status === 404) {
-      router.push('/auth/create-player')
-    }
-  }
-}
-
-// Effects: cooldowns, bank lock, stocks presence, drugs/booster active
-const bankUnlockAt = ref(null)
+// ── Live clock for cooldown countdowns ──
 const now = ref(Date.now())
 let timerId
+onMounted(() => { timerId = setInterval(() => { now.value = Date.now() }, 1000) })
+onUnmounted(() => { clearInterval(timerId) })
 
-function tick(){ now.value = Date.now() }
-onMounted(() => { timerId = setInterval(tick, 1000) })
-onUnmounted(() => { if (timerId) clearInterval(timerId) })
+// ── Extra sidebar data ──
+const bankUnlockAt = ref(null)
+const cartelRank = ref(null)
+const hasWarehouse = ref(false)
+const hasBusiness = ref(false)
+const hasCartel = computed(() => !!cartelRank.value)
+const hasStocks = computed(() => (store.player?.portfolio || []).some(p => Number(p?.shares || 0) > 0))
 
-function formatDuration(sec){
-  if (!Number.isFinite(sec) || sec <= 0) return '0s'
-  let s = Math.floor(sec)
-  const d = Math.floor(s / 86400); s -= d*86400
-  const h = Math.floor(s / 3600); s -= h*3600
-  const m = Math.floor(s / 60); s -= m*60
-  const parts = []
-  if (d) parts.push(d + 'd')
-  if (h) parts.push(h + 'h')
-  if (m) parts.push(m + 'm')
-  if (parts.length === 0) parts.push(s + 's')
-  return parts.join(' ')
+async function loadBank() {
+  try {
+    const { data } = await api.get('/bank/accounts')
+    const active = (data?.accounts || []).filter(a => !a.isWithdrawn && new Date(a.endDate) > new Date())
+    if (active.length) {
+      active.sort((a, b) => new Date(a.endDate) - new Date(b.endDate))
+      bankUnlockAt.value = new Date(active[0].endDate)
+    }
+  } catch { /* sidebar enrichment - non-critical */ }
 }
 
-const hasStocks = computed(() => {
-  const pf = store.player?.portfolio || []
-  return pf.some(p => Number(p?.shares||0) > 0)
-})
-
-async function loadBank(){
+async function loadCartel() {
   try {
-    if (!user.value?._id) return
-    const { data } = await api.get(`/bank/accounts/${user.value._id}`)
-    const active = (data?.accounts||[]).filter(a => !a.isWithdrawn && new Date(a.endDate) > new Date())
-    if (active.length) {
-      // soonest unlock
-      active.sort((a,b)=> new Date(a.endDate) - new Date(b.endDate))
-      bankUnlockAt.value = new Date(active[0].endDate)
-    } else {
-      bankUnlockAt.value = null
-    }
-  } catch {}
+    const { data } = await api.get('/cartel/overview')
+    cartelRank.value = data?.cartel?.repInfo?.name || (data?.cartel?.name ? 'Nobody' : null)
+  } catch { cartelRank.value = null }
+}
+
+async function loadGrowState() {
+  try {
+    const { data } = await api.get('/grow/my')
+    hasWarehouse.value = !!data?.warehouse
+  } catch { hasWarehouse.value = false }
+}
+
+async function loadBusinessState() {
+  try {
+    const { data } = await api.get('/business/my')
+    hasBusiness.value = (data?.businesses || []).length > 0
+  } catch { hasBusiness.value = false }
+}
+
+// ── Status effects (icons with tooltips) ──
+function fmtDur(sec) {
+  if (!Number.isFinite(sec) || sec <= 0) return '0s'
+  return fmtDuration(sec * 1000)
 }
 
 const effects = computed(() => {
   const arr = []
-  const cds = store.player?.cooldowns || {}
-  if (Number(cds.medicalCooldown||0) > 0) arr.push({ symbol: '🩹', title: `Medical cooldown • ${formatDuration(cds.medicalCooldown)}` })
-  // Drug cooldowns: aggregate across per-drug map or legacy single value
-  const drugMap = cds.drugs || {};
-  let drugCount = 0; let maxDrug = 0;
-  if (drugMap instanceof Map) {
-    for (const v of drugMap.values()) { const n=Number(v||0); if (n>0){drugCount++; maxDrug=Math.max(maxDrug,n);} }
-  } else {
-    for (const k in drugMap) { const n=Number(drugMap[k]||0); if (n>0){drugCount++; maxDrug=Math.max(maxDrug,n);} }
+  const p = store.player
+  if (!p) return arr
+
+  // Gender
+  const g = p.gender
+  if (g === 'Male')        arr.push({ symbol: '♂', title: 'Male' })
+  else if (g === 'Female') arr.push({ symbol: '♀', title: 'Female' })
+  else if (g === 'Enby')   arr.push({ symbol: '⚧', title: 'Non-binary' })
+
+  // Cooldowns
+  const cds = p.cooldowns || {}
+  if (Number(cds.medicalCooldown || 0) > 0)
+    arr.push({ symbol: '🩹', title: `Medical cooldown • ${fmtDur(cds.medicalCooldown)}` })
+
+  // Drug cooldowns
+  const drugMap = cds.drugs || {}
+  let drugCount = 0, maxDrug = 0
+  for (const k in drugMap) {
+    const n = Number(drugMap[k] || 0)
+    if (n > 0) { drugCount++; maxDrug = Math.max(maxDrug, n) }
   }
-  const legacyDrug = Number(cds.drugCooldown||0);
-  if (legacyDrug>0) { drugCount = Math.max(drugCount, 1); maxDrug = Math.max(maxDrug, legacyDrug); }
-  if (drugCount>0) arr.push({ symbol: '💊', title: `Drug cooldowns • ${drugCount} active • longest ${formatDuration(maxDrug)}` })
-  // Alcohol cooldown
-  if (Number(cds.alcoholCooldown||0) > 0) arr.push({ symbol: '🍺', title: `Alcohol cooldown • ${formatDuration(cds.alcoholCooldown)}` })
-  if (Number(cds.boosterCooldown||0) > 0) arr.push({ symbol: '⚡', title: `Booster active • ${formatDuration(cds.boosterCooldown)}` })
+  const legacyDrug = Number(cds.drugCooldown || 0)
+  if (legacyDrug > 0) { drugCount = Math.max(drugCount, 1); maxDrug = Math.max(maxDrug, legacyDrug) }
+  if (drugCount > 0)
+    arr.push({ symbol: '💊', title: `Drug cooldowns • ${drugCount} active • longest ${fmtDur(maxDrug)}` })
+
+  if (Number(cds.alcoholCooldown || 0) > 0) arr.push({ symbol: '🍺', title: `Alcohol cooldown • ${fmtDur(cds.alcoholCooldown)}` })
+  if (Number(cds.boosterCooldown || 0) > 0) arr.push({ symbol: '⚡', title: `Booster active • ${fmtDur(cds.boosterCooldown)}` })
   if (hasStocks.value) arr.push({ symbol: '📈', title: 'Stock holdings present' })
+
   if (bankUnlockAt.value) {
-    const remainSec = Math.max(0, Math.floor((bankUnlockAt.value.getTime() - now.value)/1000))
-    arr.push({ symbol: '🏦', title: `Bank unlocks in • ${formatDuration(remainSec)}` })
+    const remainSec = Math.max(0, Math.floor((bankUnlockAt.value.getTime() - now.value) / 1000))
+    arr.push({ symbol: '🏦', title: `Bank unlocks in • ${fmtDur(remainSec)}` })
   }
+
+  const edu = p.education?.active
+  if (edu?.courseId) {
+    const endsAt = edu.endsAt ? new Date(edu.endsAt) : null
+    const remainEdu = endsAt ? Math.max(0, Math.floor((endsAt.getTime() - now.value) / 1000)) : 0
+    const done = endsAt && endsAt.getTime() <= now.value
+    arr.push({ symbol: '📖', title: done ? 'Course ready to complete!' : `Studying • ${fmtDur(remainEdu)} remaining` })
+  }
+
+  if (p.job?.jobId || p.job?.companyId) arr.push({ symbol: '💼', title: p.job?.companyId ? 'Employed (Company)' : 'Employed (City Job)' })
+  if (cartelRank.value) arr.push({ symbol: '🧪', title: cartelRank.value })
+  if (p.subscriber) arr.push({ symbol: '⭐', title: 'Subscriber' })
   return arr
 })
 
+// ── Init ──
 onMounted(async () => {
-  await load()
-  await loadBank()
+  try {
+    await ensurePlayer()
+  } catch (e) {
+    if (e?.response?.status === 404) { router.push('/auth/create-player'); return }
+  }
+  await Promise.all([loadBank(), loadCartel(), loadGrowState(), loadBusinessState()])
 })
 
-async function doDev(path, amount){
-  devMsg.value = ''
+// ── Dev tools ──
+async function doDev(path, amount) {
   try {
-    await api.post(`/dev/${path}`, { userId: user.value?._id, amount: Number(amount) })
-    await load()
-    devMsgOk.value = true
-    devMsg.value = 'Done.'
+    await api.post(`/dev/${path}`, { amount: Number(amount) })
+    await store.loadByUser()
+    toast.ok('Done')
   } catch (e) {
-    devMsgOk.value = false
-    devMsg.value = e?.response?.data?.message || e?.message || 'Error'
+    toast.error(e?.response?.data?.error || e?.message || 'Error')
   }
 }
-
-onMounted(load)
 </script>
 
 <style scoped>
-/* Styling comes from global layout.css */
-.status-effects { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; overflow: visible; }
+.status-effects { display: flex; gap: 4px; margin-bottom: 10px; flex-wrap: wrap; }
 .effect-icon {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px; height: 26px;
-  border-radius: 999px;
-  border: 1px solid var(--border, #2b2f38);
-  background: rgba(255,255,255,0.04);
-  font-size: 14px;
+  width: 24px; height: 24px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  font-size: 13px;
   cursor: default;
 }
 .effect-icon::after {
   content: attr(data-tip);
   position: absolute;
   left: 0;
-  right: auto;
-  top: calc(100% + 8px);
-  bottom: auto;
-  transform: none;
-  display: inline-block;
-  text-align: left;
+  top: calc(100% + 6px);
   white-space: normal;
   overflow-wrap: break-word;
-  word-break: normal;
   min-width: 140px;
-  max-width: min(260px, 80vw);
-  background: var(--panel, #171a2b);
-  color: var(--text, #e8eaf6);
-  border: 1px solid var(--border, rgba(255,255,255,0.12));
-  border-radius: 6px;
-  padding: 6px 8px;
-  font-size: 12px;
-  line-height: 1;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+  max-width: min(240px, 80vw);
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 4px 8px;
+  font-size: 11px;
+  line-height: 1.4;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 120ms ease;
+  transition: opacity 80ms;
   z-index: 1000;
 }
 .effect-icon:hover::after { opacity: 1; }

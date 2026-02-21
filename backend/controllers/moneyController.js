@@ -1,72 +1,44 @@
-const Player = require("../models/Player");
+// ═══════════════════════════════════════════════════════════════
+//  Money Controller — Wallet, transfers, transaction history
+// ═══════════════════════════════════════════════════════════════
 
-const getMoney = async (req, res) => {
-  const { userId } = req.body;
+const moneyService = require('../services/moneyService');
+
+// GET /api/money/wallet
+async function wallet(req, res) {
   try {
-    const player = await Player.findOne({ id: userId }); // Use findOne instead of findById
-    if (!player) {
-      return res.status(404).json({ error: "Player not found" });
-    }
-    res.json({ money: player.money });
+    const userId = req.authUserId;
+    const data = await moneyService.getWallet(userId);
+    return res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(err.status || 500).json({ error: err.message });
   }
-};
+}
 
-const addMoney = async (req, res) => {
-  const { userId, amount } = req.body;
+// POST /api/money/transfer  { recipient, amount }
+async function transfer(req, res) {
   try {
-    const player = await Player.findOne({ id: userId }); // Use findOne instead of findById
-    if (!player) {
-      return res.status(404).json({ error: "Player not found" });
-    }
-    player.money = Number(player.money) + Number(amount);
-    await player.save();
-    res.json({ money: player.money });
+    const userId = req.authUserId;
+    const { recipient, amount } = req.body;
+    if (!recipient) return res.status(400).json({ error: 'Recipient is required' });
+    if (!amount)    return res.status(400).json({ error: 'Amount is required' });
+    const result = await moneyService.transferMoney(userId, recipient, amount);
+    return res.json(result);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(err.status || 500).json({ error: err.message });
   }
-};
+}
 
-const removeMoney = async (req, res) => {
-  const { userId, amount } = req.body;
+// GET /api/money/history?page=1&filter=crime,job
+async function history(req, res) {
   try {
-    const player = await Player.findOne({ id: userId }); // Use findOne instead of findById
-    if (!player) {
-      return res.status(404).json({ error: "Player not found" });
-    }
-    if (player.money < amount) {
-      return res.status(400).json({ error: "Not enough money" });
-    }
-    player.money -= amount;
-    await player.save();
-    res.json({ money: player.money });
+    const userId = req.authUserId;
+    const { page, filter } = req.query;
+    const data = await moneyService.getHistory(userId, page, filter);
+    return res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(err.status || 500).json({ error: err.message });
   }
-};
+}
 
-const spendMoney = async (req, res) => {
-  const { userId, amount } = req.body;
-  try {
-    const player = await Player.findOne({ id: userId }); // Use findOne instead of findById
-    if (!player) {
-      return res.status(404).json({ error: "Player not found" });
-    }
-    if (player.money < amount) {
-      return res.status(400).json({ error: "Not enough money" });
-    }
-    player.money -= amount;
-    await player.save();
-    res.json({ money: player.money });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-module.exports = {
-  getMoney,
-  addMoney,
-  removeMoney,
-  spendMoney,
-};
+module.exports = { wallet, transfer, history };

@@ -1,19 +1,20 @@
 const Player = require('../models/Player');
 
-async function getDevPlayer(userId) {
-  // Find player by linked user ObjectId
+async function getDevPlayer(req) {
+  const userId = req.authUserId;
+  if (!userId) throw new Error('Unauthorized');
   const player = await Player.findOne({ user: userId });
   if (!player) throw new Error('Player not found');
   if (player.playerRole !== 'Developer') throw new Error('Forbidden');
   return player;
 }
 
-// POST /api/dev/add-money { userId, amount }
+// POST /api/dev/add-money { amount }
 async function addMoney(req, res) {
   try {
-    const { userId, amount } = req.body;
-    if (!userId || typeof amount === 'undefined') return res.status(400).json({ error: 'userId and amount are required' });
-    const player = await getDevPlayer(userId);
+    const { amount } = req.body;
+    if (typeof amount === 'undefined') return res.status(400).json({ error: 'amount is required' });
+    const player = await getDevPlayer(req);
     player.money = Number(player.money || 0) + Number(amount || 0);
     await player.save();
     return res.json({ money: player.money });
@@ -25,12 +26,12 @@ async function addMoney(req, res) {
   }
 }
 
-// POST /api/dev/add-energy { userId, amount }
+// POST /api/dev/add-energy { amount }
 async function addEnergy(req, res) {
   try {
-    const { userId, amount } = req.body;
-    if (!userId || typeof amount === 'undefined') return res.status(400).json({ error: 'userId and amount are required' });
-    const player = await getDevPlayer(userId);
+    const { amount } = req.body;
+    if (typeof amount === 'undefined') return res.status(400).json({ error: 'amount is required' });
+    const player = await getDevPlayer(req);
     const inc = Number(amount || 0);
     const eMax = player.energyStats?.energyMax ?? 0;
     player.energyStats.energy = Math.min(eMax, (player.energyStats?.energy ?? 0) + inc);
@@ -44,12 +45,12 @@ async function addEnergy(req, res) {
   }
 }
 
-// POST /api/dev/add-nerve { userId, amount }
+// POST /api/dev/add-nerve { amount }
 async function addNerve(req, res) {
   try {
-    const { userId, amount } = req.body;
-    if (!userId || typeof amount === 'undefined') return res.status(400).json({ error: 'userId and amount are required' });
-    const player = await getDevPlayer(userId);
+    const { amount } = req.body;
+    if (typeof amount === 'undefined') return res.status(400).json({ error: 'amount is required' });
+    const player = await getDevPlayer(req);
     const inc = Number(amount || 0);
     const nMax = player.nerveStats?.nerveMax ?? 0;
     player.nerveStats.nerve = Math.min(nMax, (player.nerveStats?.nerve ?? 0) + inc);

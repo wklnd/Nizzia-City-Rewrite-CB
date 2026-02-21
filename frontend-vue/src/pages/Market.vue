@@ -168,9 +168,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '../api/client'
-import { usePlayerStore } from '../stores/player'
+import { usePlayer } from '../composables/usePlayer'
+import { useToast } from '../composables/useToast'
+import { fmtMoney } from '../utils/format'
 
-const store = usePlayerStore()
+const { store, ensurePlayer, reloadPlayer } = usePlayer()
+const toast = useToast()
 const loading = ref(false)
 const busy = ref(false)
 const inv = ref([])
@@ -182,8 +185,8 @@ const filter = ref('')
 const form = ref({ itemKey: '', qty: 1, price: 1, petPrice: 1, propertyId: '', propertyPrice: 1 })
 const canCreate = computed(() => {
   if (tab.value === 'items') return form.value.itemKey && form.value.qty > 0 && form.value.price > 0
-  if (tab.value === 'pets') return Number(form.value.petPrice||0) > 0 && !!(petMine.value && petMine.value.pet)
-  return form.value.propertyId && Number(form.value.propertyPrice||0) > 0
+  if (tab.value === 'pets') return Number(form.value.petPrice || 0) > 0 && !!(petMine.value && petMine.value.pet)
+  return form.value.propertyId && Number(form.value.propertyPrice || 0) > 0
 })
 
 const myListings = computed(() => {
@@ -191,151 +194,115 @@ const myListings = computed(() => {
   return listings.value.filter(l => l.sellerId === pid)
 })
 
-function fmtMoney(n){ return `$${Number(n||0).toLocaleString(undefined,{ maximumFractionDigits: 0 })}` }
+const filteredListings = computed(() => {
+  const f = (filter.value || '').trim().toLowerCase()
+  if (!f) return listings.value
+  if (tab.value === 'items') return listings.value.filter(l => (l.item?.name || l.itemId || '').toLowerCase().includes(f))
+  if (tab.value === 'pets') return listings.value.filter(l => (l.pet?.name || '').toLowerCase().includes(f))
+  return listings.value.filter(l => (l.property?.name || l.propertyId || '').toLowerCase().includes(f))
+})
 
-function getUserId(){ try { const u=JSON.parse(localStorage.getItem('nc_user')||'null'); return u?._id || u?.id || null } catch { return null } }
-
-async function loadInventory(){
+async function loadInventory() {
   if (!store.player?.user) return
-  const { data } = await api.get(`/inventory/${store.player.user}`)
-  // inventory entries are populated with 'inventory.item' in API
-  inv.value = (data?.inventory||[]).map(e => ({ item: { id: e.item.id, name: e.item.name }, qty: e.qty }))
+  const { data } = await api.get('/inventory/mine')
+  inv.value = (data?.inventory || []).map(e => ({ item: { id: e.item.id, name: e.item.name }, qty: e.qty }))
 }
 
-async function loadListings(){
+async function loadListings() {
   loading.value = true
   try {
     let data
     if (tab.value === 'items') {
       data = (await api.get('/market/listings')).data
-      const rows = data?.listings || []
-      rows.forEach(r => { r.buyQty = 1 })
-      listings.value = rows
+      const rows = data?.listings || []; rows.forEach(r => { r.buyQty = 1 }); listings.value = rows
     } else if (tab.value === 'pets') {
-      data = (await api.get('/market/listings/pets')).data
-      listings.value = data?.listings || []
+      data = (await api.get('/market/listings/pets')).data; listings.value = data?.listings || []
     } else {
-      data = (await api.get('/market/listings/properties')).data
-      listings.value = data?.listings || []
+      data = (await api.get('/market/listings/properties')).data; listings.value = data?.listings || []
     }
-  } catch (e){
-    // ignore
-  } finally { loading.value = false }
+  } catch { /* ignore */ } finally { loading.value = false }
 }
 
-const filteredListings = computed(() => {
-  const f = (filter.value||'').trim().toLowerCase()
-  if (!f) return listings.value
-  if (tab.value === 'items') return listings.value.filter(l => (l.item?.name||l.itemId||'').toLowerCase().includes(f))
-  if (tab.value === 'pets') return listings.value.filter(l => (l.pet?.name||'').toLowerCase().includes(f))
-  return listings.value.filter(l => (l.property?.name||l.propertyId||'').toLowerCase().includes(f))
-})
-
-async function ensurePlayer(){
-  if (store.player?.user) return
-  try {
-    const raw = localStorage.getItem('nc_user')
-    if (raw){ let u = raw; try { const o=JSON.parse(raw); u = o?._id || o?.id || raw } catch {}
-      await store.loadByUser(u) }
-  } catch {}
-}
-
-async function create(){
+async function create() {
   if (!canCreate.value) return
   busy.value = true
   try {
-    const uid = getUserId(); if (!uid) throw new Error('Not authenticated')
     if (tab.value === 'items') {
-      await api.post('/market/list', { userId: uid, itemId: form.value.itemKey, qty: form.value.qty, price: form.value.price })
-      form.value.qty = 1
+      await api.post('/market/list', { itemId: form.value.itemKey, qty: form.value.qty, price: form.value.price }); form.value.qty = 1
     } else if (tab.value === 'pets') {
-      await api.post('/market/list/pet', { userId: uid, price: form.value.petPrice })
+      await api.post('/market/list/pet', { price: form.value.petPrice })
     } else {
-      await api.post('/market/list/property', { userId: uid, propertyId: form.value.propertyId, price: form.value.propertyPrice })
+      await api.post('/market/list/property', { propertyId: form.value.propertyId, price: form.value.propertyPrice })
     }
-    await Promise.all([loadListings(), loadInventory(), store.loadByUser(store.player.user), loadMinePet()])
-  } catch (e){
-    alert(e?.response?.data?.error || e?.message || 'Failed to list')
-  } finally { busy.value = false }
-}
-
-async function cancel(l){
-  busy.value = true
-  try {
-    const uid = getUserId(); if (!uid) throw new Error('Not authenticated')
-    if (tab.value === 'items') await api.post('/market/cancel', { userId: uid, listingId: l.id })
-    else if (tab.value === 'pets') await api.post('/market/cancel/pet', { userId: uid, listingId: l.id })
-    else await api.post('/market/cancel/property', { userId: uid, listingId: l.id })
-    await Promise.all([loadListings(), loadInventory(), store.loadByUser(store.player.user), loadMinePet()])
-  } catch (e){ alert(e?.response?.data?.error || e?.message || 'Failed to cancel') }
+    await Promise.all([loadListings(), loadInventory(), reloadPlayer(), loadMinePet()])
+    toast.ok('Listed.')
+  } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Failed to list') }
   finally { busy.value = false }
 }
 
-async function buy(l){
+async function cancel(l) {
   busy.value = true
   try {
-    const uid = getUserId(); if (!uid) throw new Error('Not authenticated')
-    if (tab.value === 'items') {
-      const q = Math.max(1, Number(l.buyQty||1))
-      await api.post('/market/buy', { userId: uid, listingId: l.id, qty: q })
-    } else if (tab.value === 'pets') {
-      await api.post('/market/buy/pet', { userId: uid, listingId: l.id })
-    } else {
-      await api.post('/market/buy/property', { userId: uid, listingId: l.id })
-    }
-    await Promise.all([loadListings(), store.loadByUser(store.player.user), loadMinePet()])
-  } catch (e){ alert(e?.response?.data?.error || e?.message || 'Failed to buy') }
+    if (tab.value === 'items') await api.post('/market/cancel', { listingId: l.id })
+    else if (tab.value === 'pets') await api.post('/market/cancel/pet', { listingId: l.id })
+    else await api.post('/market/cancel/property', { listingId: l.id })
+    await Promise.all([loadListings(), loadInventory(), reloadPlayer(), loadMinePet()])
+    toast.ok('Cancelled.')
+  } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Failed to cancel') }
   finally { busy.value = false }
 }
 
-function switchTab(next){ tab.value = next; loadListings() }
+async function buy(l) {
+  busy.value = true
+  try {
+    let res
+    if (tab.value === 'items') {
+      const q = Math.max(1, Number(l.buyQty || 1))
+      res = await api.post('/market/buy', { listingId: l.id, qty: q })
+    } else if (tab.value === 'pets') {
+      res = await api.post('/market/buy/pet', { listingId: l.id })
+    } else {
+      res = await api.post('/market/buy/property', { listingId: l.id })
+    }
+    if (res?.data?.money != null) store.mergePartial({ money: res.data.money })
+    await Promise.all([loadListings(), loadMinePet()])
+    toast.ok('Purchased.')
+  } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Failed to buy') }
+  finally { busy.value = false }
+}
 
-async function loadMinePet(){
+function switchTab(next) { tab.value = next; loadListings() }
+
+async function loadMinePet() {
   try {
     if (!store.player?.user) return
-    const { data } = await api.get('/pets/my', { params: { userId: store.player.user } })
+    const { data } = await api.get('/pets/my')
     petMine.value = data
   } catch { petMine.value = null }
 }
 
 const propertyOptions = computed(() => {
-  const opts = []
-  const defs = new Map((store.player?.properties||[]).map(e => [e.propertyId, e]))
-  // Build from catalog to get names
-  // Fallback to ID if not found in catalog
   const seen = {}
   const props = store.player?.properties || []
   for (const e of props) {
     if (e.propertyId === 'trailer') continue
     if (store.player?.home === e.propertyId) continue
-    seen[e.propertyId] = (seen[e.propertyId]||0) + 1
+    seen[e.propertyId] = (seen[e.propertyId] || 0) + 1
   }
-  for (const id of Object.keys(seen)) {
-    const name = id.replace(/_/g,' ').replace(/\b\w/g, c=>c.toUpperCase())
-    opts.push({ id, name, count: seen[id] })
-  }
-  // Ensure 'silo' shows up if owned
-  return opts.sort((a,b)=> a.name.localeCompare(b.name))
+  return Object.keys(seen).map(id => ({
+    id, name: id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), count: seen[id],
+  })).sort((a, b) => a.name.localeCompare(b.name))
 })
 
 onMounted(async () => { await ensurePlayer(); await Promise.all([loadInventory(), loadListings(), loadMinePet()]) })
 </script>
 
 <style scoped>
-.grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
-.panel { border: 1px solid var(--border, #2b2f38); border-radius: 8px; padding: 10px; background: var(--panel, #171a2b); }
+.market { max-width: 1000px; margin: 0 auto; }
+.panel__head { display: flex; align-items: center; justify-content: space-between; }
 .panel--full { grid-column: 1 / -1; }
-.panel__head { display:flex; align-items:center; justify-content: space-between; }
-.tbl { width:100%; border-collapse: collapse; font-size: 13px; }
-.tbl th, .tbl td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
-.tbl td.num { text-align: right; font-feature-settings: 'tnum'; font-variant-numeric: tabular-nums; }
-.actions { margin-top: 8px; display:flex; gap: 8px; align-items: center; }
-.form-grid { display:grid; grid-template-columns: 120px 1fr; gap: 8px; align-items:center; }
-.input, select { padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border, rgba(255,255,255,0.18)); background:#0f1421; color: var(--text, #e8eaf6); }
+.form-grid { display: grid; grid-template-columns: 100px 1fr; gap: 6px; align-items: center; font-size: 12px; }
 .input--qty { width: 72px; }
-.btn { border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.06); padding: 6px 10px; border-radius: 8px; cursor: pointer; color: var(--text, #e8eaf6); }
-.btn-danger { background:#c92a2a; border-color:#a61e1e; }
-.tabs { display:flex; gap: 6px; }
-.tabs button { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.06); color: var(--text, #e8eaf6); cursor: pointer; }
-.tabs button.active { background:#2563eb; color:#fff; border-color:#1d4ed8; }
+.filter { margin-bottom: 6px; }
+.btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
 </style>

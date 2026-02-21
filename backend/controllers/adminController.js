@@ -8,45 +8,14 @@ const { calculatePayout } = require('../services/bankService');
 const mongoose = require('mongoose');
 const StockPrice = require('../models/StockPrice');
 const StockEvent = require('../models/StockEvent');
-
-function resolveAdminUserId(req) {
-  // Prefer explicit, but fall back to token-derived user id
-  return (
-    req.body?.adminUserId ||
-    req.query?.adminUserId ||
-    req.authUserId ||
-    null
-  );
-}
+const Cartel = require('../models/Cartel');
+const { REP_LEVELS } = require('../config/cartel');
+const { getRepLevel, getRepInfo } = require('../services/cartel/cartelService');
 
 async function getAdminPlayerFromReq(req) {
-  // Accept multiple identifier forms to avoid cast errors from the UI:
-  // - Authorization token (req.authUserId) -> matches Player.user
-  // - adminUserId as Mongo ObjectId -> matches Player.user or Player._id
-  // - adminUserId as numeric -> matches Player.id (numeric player id)
-  const raw = resolveAdminUserId(req);
-
-  // Try token first if present and valid
-  if (req.authUserId && mongoose.Types.ObjectId.isValid(req.authUserId)) {
-    const byToken = await Player.findOne({ user: req.authUserId });
-    if (byToken && ['Admin', 'Developer'].includes(byToken.playerRole)) return byToken;
-  }
-
-  // Next, try explicit adminUserId from body/query
-  if (!raw) throw new Error('Unauthorized');
-
-  let adminPlayer = null;
-  if (mongoose.Types.ObjectId.isValid(raw)) {
-    // Could be either a User _id (stored in Player.user) or a Player _id
-    adminPlayer = await Player.findOne({ $or: [{ user: raw }, { _id: raw }] });
-  } else {
-    // If numeric, interpret as the numeric Player.id
-    const n = Number(raw);
-    if (Number.isFinite(n)) {
-      adminPlayer = await Player.findOne({ id: n });
-    }
-  }
-
+  const userId = req.authUserId;
+  if (!userId) throw new Error('Unauthorized');
+  const adminPlayer = await Player.findOne({ user: userId });
   if (!adminPlayer) throw new Error('Admin player not found');
   if (!['Admin', 'Developer'].includes(adminPlayer.playerRole)) throw new Error('Forbidden');
   return adminPlayer;
@@ -481,6 +450,8 @@ module.exports = {
   setPlayerCooldown,
   clearPlayerCooldown,
   resetAllCooldowns,
+  // cartel
+  setCartelRep,
   // database
   purgeDatabase,
 };
@@ -763,6 +734,52 @@ async function resetAllCooldowns(req, res) {
     if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
     console.error('ADMIN resetAllCooldowns error:', err);
     return res.status(500).json({ error: 'Failed to reset cooldowns' });
+  }
+}
+
+// ------------------------------
+// Cartel reputation
+// ------------------------------
+
+// PATCH /api/admin/cartel/rep { adminUserId, targetUserId, reputation?, repLevel? }
+async function setCartelRep(req, res) {
+  try {
+    const { targetUserId } = req.body;
+    if (!targetUserId) return res.status(400).json({ error: 'targetUserId is required' });
+    await getAdminPlayerFromReq(req);
+
+    // Find the cartel owned by target player
+    const cartel = await Cartel.findOne({ ownerId: targetUserId });
+    if (!cartel) return res.status(404).json({ error: 'Target player does not own a cartel' });
+
+    let newRep = cartel.reputation;
+
+    // If repLevel provided, set rep to that level's threshold
+    if (typeof req.body.repLevel !== 'undefined') {
+      const lvl = Math.max(0, Math.min(REP_LEVELS.length - 1, Number(req.body.repLevel)));
+      newRep = REP_LEVELS[lvl].xpRequired;
+    }
+    // If explicit reputation provided, use that (overrides repLevel)
+    if (typeof req.body.reputation !== 'undefined') {
+      newRep = Math.max(0, Number(req.body.reputation));
+    }
+
+    cartel.reputation = Number.isFinite(newRep) ? newRep : cartel.reputation;
+    cartel.repLevel = getRepLevel(cartel.reputation);
+    await cartel.save();
+
+    const info = getRepInfo(cartel.reputation);
+    return res.json({
+      cartelName: cartel.name,
+      reputation: cartel.reputation,
+      repLevel: cartel.repLevel,
+      rankName: info.name,
+    });
+  } catch (err) {
+    if (err.message === 'Unauthorized') return res.status(401).json({ error: 'Unauthorized' });
+    if (err.message === 'Forbidden') return res.status(403).json({ error: 'Not authorized' });
+    console.error('ADMIN setCartelRep error:', err);
+    return res.status(500).json({ error: 'Failed to set cartel reputation' });
   }
 }
 

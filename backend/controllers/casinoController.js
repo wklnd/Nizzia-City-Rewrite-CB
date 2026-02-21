@@ -24,9 +24,10 @@ function wheelReward(wheel) {
 
 const spinWheel = async (req, res) => {
   try {
-    const { userId, wheel } = req.body; // Expecting userId (numeric Player.id or user ObjectId) and wheel type
-    if (!userId || !wheel) {
-      return res.status(400).json({ error: "User ID and wheel type are required" });
+    const userId = req.authUserId;
+    const { wheel } = req.body;
+    if (!wheel) {
+      return res.status(400).json({ error: "Wheel type is required" });
     }
 
     // Validate wheel type and get its cost
@@ -36,16 +37,8 @@ const spinWheel = async (req, res) => {
     }
     const cost = wheelConfig.cost;
 
-    // Resolve player by numeric Player.id or by user ObjectId
-    let player = null;
-    const numId = Number(userId);
-    if (!Number.isNaN(numId)) {
-      player = await Player.findOne({ id: numId });
-    }
-    if (!player) {
-      // try by user ObjectId
-      player = await Player.findOne({ user: userId });
-    }
+    // Resolve player by user ObjectId
+    const player = await Player.findOne({ user: userId });
     if (!player) {
       return res.status(404).json({ error: "Player not found" });
     }
@@ -74,6 +67,7 @@ const spinWheel = async (req, res) => {
     }
 
     // Deduct the cost from the player's money
+    player.$locals._txMeta = { type: 'casino_loss', description: `Casino wheel spin` };
     player.money = Number(player.money || 0) - Number(cost || 0);
 
     // Spin the wheel and determine the reward
@@ -82,6 +76,7 @@ const spinWheel = async (req, res) => {
     // Apply reward for basic types
     if (reward) {
       if (reward.type === 'money') {
+        player.$locals._txMeta = { type: 'casino_win', description: `Casino wheel win` };
         player.money = Number(player.money || 0) + Number(reward.value || 0);
       } else if (reward.type === 'points') {
         player.points = Number(player.points || 0) + Number(reward.value || 0);

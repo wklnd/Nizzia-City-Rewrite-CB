@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { requireAuth } = require('../middleware/authUser');
 const { getAllItems, useItem, createItem, deleteItem, downloadAllItems } = require('../controllers/itemController');
 
 // GET all items
@@ -9,7 +10,7 @@ router.get('/', getAllItems);
 router.post('/create', createItem);
 
 // POST to use an item
-router.post('/use', useItem);
+router.post('/use', requireAuth, useItem);
 
 // DELETE an item
 router.delete('/:id', deleteItem);

@@ -8,6 +8,7 @@ const { mountRoutes } = require('./routes');
 const notFound = require('./middleware/notFound');
 const errorHandler = require('./middleware/errorHandler');
 const requestLogger = require('./middleware/requestLogger');
+const { attachAuth } = require('./middleware/authUser');
 
 const scheduleRegenEnergy = require('./cronjobs/regenEnergy');
 const scheduleRegenNerve = require('./cronjobs/regenNerve');
@@ -19,6 +20,8 @@ const scheduleNpcActions = require('./cronjobs/npcActions');
 const schedulePlayerSnapshots = require('./cronjobs/playerSnapshot');
 const scheduleBankApr = require('./cronjobs/bankApr');
 const scheduleDailyReset = require('./cronjobs/dailyReset');
+const scheduleBusinessIncome = require('./cronjobs/businessCron');
+const scheduleCartelTick = require('./cronjobs/cartelCron');
 
 // ------------------------------------------------------
 // Safe chalk import (works for both CommonJS and ESM)
@@ -61,6 +64,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(express.json());
+app.use(attachAuth);          // ← set req.authUserId on every request
 app.use(requestLogger());
 
 // Routes
@@ -82,6 +86,8 @@ if (process.env.DISABLE_CRON !== 'true') {
   schedulePlayerSnapshots();
   scheduleRegenCooldowns();
   scheduleDailyReset();
+  scheduleBusinessIncome();
+  scheduleCartelTick();
 }
 
 // Start server

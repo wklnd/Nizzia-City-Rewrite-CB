@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { attachAuth } = require('../middleware/authUser');
+const { requireAuth } = require('../middleware/authUser');
 const {
   adjustCurrency,
   adjustExp,
@@ -30,12 +30,14 @@ const {
   setPlayerCooldown,
   clearPlayerCooldown,
   resetAllCooldowns,
+  // cartel
+  setCartelRep,
   // database
   purgeDatabase,
 } = require('../controllers/adminController');
 
-// Attach auth info from Authorization header on all admin routes
-router.use(attachAuth);
+// All admin routes require authentication
+router.use(requireAuth);
 
 // Player financials & progression
 router.patch('/currency', adjustCurrency);
@@ -77,6 +79,9 @@ router.post('/cooldowns/reset-all', resetAllCooldowns);
 // General bulk actions
 router.post('/general/energy-max', setAllEnergyToMax);
 router.post('/general/give-money', giveMoneyToAll);
+
+// Cartel
+router.patch('/cartel/rep', setCartelRep);
 
 // Database maintenance (danger)
 router.post('/database/purge', purgeDatabase);

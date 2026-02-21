@@ -7,19 +7,7 @@ const PropertyMarket = require('../models/PropertyMarket');
 const Pets = require('../models/Pets');
 const propertyService = require('../services/propertyService');
 
-function normalizeUserId(input){
-  if (!input) return null;
-  const n = Number(input);
-  if (!Number.isNaN(n)) return { kind: 'playerId', value: n };
-  return { kind: 'user', value: input };
-}
 
-async function findPlayerByAny(userId){
-  const norm = normalizeUserId(userId);
-  if (!norm) return null;
-  if (norm.kind === 'playerId') return Player.findOne({ id: norm.value });
-  return Player.findOne({ user: norm.value });
-}
 
 async function getListings(req, res){
   try {
@@ -27,7 +15,7 @@ async function getListings(req, res){
     const q = {};
     if (itemId) q.itemId = String(itemId);
     if (sellerId) {
-      const p = await findPlayerByAny(sellerId);
+      const p = await Player.findById(sellerId);
       if (!p) return res.status(404).json({ error: 'Seller not found' });
       q.sellerId = p._id;
     }
@@ -59,12 +47,13 @@ async function getListings(req, res){
 
 async function listItem(req, res){
   try {
-    const { userId, itemId, qty, price } = req.body || {};
+    const userId = req.authUserId;
+    const { itemId, qty, price } = req.body || {};
     const quantity = Math.max(1, Number(qty || 1));
     const unitPrice = Number(price || 0);
-    if (!userId || !itemId || unitPrice <= 0) return res.status(400).json({ error: 'userId, itemId and positive price are required' });
+    if (!itemId || unitPrice <= 0) return res.status(400).json({ error: 'itemId and positive price are required' });
 
-    const player = await findPlayerByAny(userId);
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     // Resolve item by custom id (string) or _id
     let item = null;
@@ -94,9 +83,10 @@ async function listItem(req, res){
 
 async function cancelListing(req, res){
   try {
-    const { userId, listingId } = req.body || {};
-    if (!userId || !listingId) return res.status(400).json({ error: 'userId and listingId are required' });
-    const player = await findPlayerByAny(userId);
+    const userId = req.authUserId;
+    const { listingId } = req.body || {};
+    if (!listingId) return res.status(400).json({ error: 'listingId is required' });
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     const listing = await ItemMarket.findById(listingId);
     if (!listing) return res.status(404).json({ error: 'Listing not found' });
@@ -123,11 +113,12 @@ async function cancelListing(req, res){
 
 async function buyFromListing(req, res){
   try {
-    const { userId, listingId, qty } = req.body || {};
+    const userId = req.authUserId;
+    const { listingId, qty } = req.body || {};
     const quantity = Math.max(1, Number(qty || 1));
-    if (!userId || !listingId) return res.status(400).json({ error: 'userId and listingId are required' });
+    if (!listingId) return res.status(400).json({ error: 'listingId is required' });
 
-    const buyer = await findPlayerByAny(userId);
+    const buyer = await Player.findOne({ user: userId });
     if (!buyer) return res.status(404).json({ error: 'Player not found' });
 
     const listing = await ItemMarket.findById(listingId);
@@ -145,6 +136,7 @@ async function buyFromListing(req, res){
     if (!item) return res.status(404).json({ error: 'Item not found' });
 
     // Transfer money and items
+    buyer.$locals._txMeta = { type: 'purchase', description: `Bought ${quantity}x ${item.name || 'item'} from market` };
     buyer.money = Number(buyer.money||0) - total;
     const binv = buyer.inventory || [];
     const bidx = binv.findIndex(e => String(e.item) === String(item._id));
@@ -153,6 +145,7 @@ async function buyFromListing(req, res){
     buyer.inventory = binv;
 
     if (seller && String(seller._id) !== String(buyer._id)) {
+      seller.$locals._txMeta = { type: 'sale', description: `Sold ${quantity}x ${item.name || 'item'} on market` };
       seller.money = Number(seller.money||0) + total;
     }
 
@@ -174,10 +167,11 @@ module.exports = { getListings, listItem, buyFromListing, cancelListing };
 // --- Pets Market ---
 async function listPet(req, res){
   try {
-    const { userId, price } = req.body || {};
+    const userId = req.authUserId;
+    const { price } = req.body || {};
     const unitPrice = Number(price||0);
-    if (!userId || unitPrice <= 0) return res.status(400).json({ error: 'userId and positive price are required' });
-    const seller = await findPlayerByAny(userId);
+    if (unitPrice <= 0) return res.status(400).json({ error: 'Positive price is required' });
+    const seller = await Player.findOne({ user: userId });
     if (!seller) return res.status(404).json({ error: 'Player not found' });
     const pet = await Pets.findOne({ ownerId: seller.user });
     if (!pet) return res.status(404).json({ error: 'No pet to list' });
@@ -215,9 +209,10 @@ async function getPetListings(req, res){
 
 async function cancelPetListing(req, res){
   try {
-    const { userId, listingId } = req.body || {};
-    if (!userId || !listingId) return res.status(400).json({ error: 'userId and listingId are required' });
-    const seller = await findPlayerByAny(userId);
+    const userId = req.authUserId;
+    const { listingId } = req.body || {};
+    if (!listingId) return res.status(400).json({ error: 'listingId is required' });
+    const seller = await Player.findOne({ user: userId });
     if (!seller) return res.status(404).json({ error: 'Player not found' });
     const row = await PetMarket.findById(listingId);
     if (!row) return res.status(404).json({ error: 'Listing not found' });
@@ -231,9 +226,10 @@ async function cancelPetListing(req, res){
 
 async function buyPetListing(req, res){
   try {
-    const { userId, listingId } = req.body || {};
-    if (!userId || !listingId) return res.status(400).json({ error: 'userId and listingId are required' });
-    const buyer = await findPlayerByAny(userId);
+    const userId = req.authUserId;
+    const { listingId } = req.body || {};
+    if (!listingId) return res.status(400).json({ error: 'listingId is required' });
+    const buyer = await Player.findOne({ user: userId });
     if (!buyer) return res.status(404).json({ error: 'Buyer not found' });
     const row = await PetMarket.findById(listingId);
     if (!row) return res.status(404).json({ error: 'Listing not found' });
@@ -247,8 +243,10 @@ async function buyPetListing(req, res){
     const price = Number(row.price||0);
     if (Number(buyer.money||0) < price) return res.status(400).json({ error: 'Not enough money' });
     // Transfer
+    buyer.$locals._txMeta = { type: 'purchase', description: `Bought pet from market` };
     buyer.money = Number(buyer.money||0) - price;
     if (seller && String(seller._id) !== String(buyer._id)) {
+      seller.$locals._txMeta = { type: 'sale', description: `Sold pet on market` };
       seller.money = Number(seller.money||0) + price;
       await seller.save();
     }
@@ -262,11 +260,12 @@ async function buyPetListing(req, res){
 // --- Property Market ---
 async function listProperty(req, res){
   try {
-    const { userId, propertyId, price } = req.body || {};
+    const userId = req.authUserId;
+    const { propertyId, price } = req.body || {};
     const unitPrice = Number(price||0);
-    if (!userId || !propertyId || unitPrice <= 0) return res.status(400).json({ error: 'userId, propertyId and positive price are required' });
+    if (!propertyId || unitPrice <= 0) return res.status(400).json({ error: 'propertyId and positive price are required' });
     if (propertyId === 'trailer') return res.status(400).json({ error: 'Cannot list your starter trailer' });
-    const seller = await findPlayerByAny(userId);
+    const seller = await Player.findOne({ user: userId });
     if (!seller) return res.status(404).json({ error: 'Player not found' });
     if (seller.home === propertyId) return res.status(400).json({ error: 'Cannot list your active home' });
     const arr = Array.from(seller.properties || []);
@@ -306,9 +305,10 @@ async function getPropertyListings(req, res){
 
 async function cancelPropertyListing(req, res){
   try {
-    const { userId, listingId } = req.body || {};
-    if (!userId || !listingId) return res.status(400).json({ error: 'userId and listingId are required' });
-    const seller = await findPlayerByAny(userId);
+    const userId = req.authUserId;
+    const { listingId } = req.body || {};
+    if (!listingId) return res.status(400).json({ error: 'listingId is required' });
+    const seller = await Player.findOne({ user: userId });
     if (!seller) return res.status(404).json({ error: 'Player not found' });
     const row = await PropertyMarket.findById(listingId);
     if (!row) return res.status(404).json({ error: 'Listing not found' });
@@ -323,17 +323,19 @@ async function cancelPropertyListing(req, res){
 
 async function buyPropertyListing(req, res){
   try {
-    const { userId, listingId } = req.body || {};
-    if (!userId || !listingId) return res.status(400).json({ error: 'userId and listingId are required' });
-    const buyer = await findPlayerByAny(userId);
+    const userId = req.authUserId;
+    const { listingId } = req.body || {};
+    if (!listingId) return res.status(400).json({ error: 'listingId is required' });
+    const buyer = await Player.findOne({ user: userId });
     if (!buyer) return res.status(404).json({ error: 'Buyer not found' });
     const row = await PropertyMarket.findById(listingId);
     if (!row) return res.status(404).json({ error: 'Listing not found' });
     const seller = await Player.findById(row.sellerId);
     const price = Number(row.price||0);
     if (Number(buyer.money||0) < price) return res.status(400).json({ error: 'Not enough money' });
+    buyer.$locals._txMeta = { type: 'purchase', description: `Bought property from market` };
     buyer.money = Number(buyer.money||0) - price;
-    if (seller && String(seller._id) !== String(buyer._id)) { seller.money = Number(seller.money||0) + price; await seller.save(); }
+    if (seller && String(seller._id) !== String(buyer._id)) { seller.$locals._txMeta = { type: 'sale', description: 'Sold property on market' }; seller.money = Number(seller.money||0) + price; await seller.save(); }
     const props = Array.from(buyer.properties || []);
     props.push({ propertyId: row.propertyId, upgrades: row.upgrades || {}, acquiredAt: new Date() });
     buyer.properties = props; await buyer.save();

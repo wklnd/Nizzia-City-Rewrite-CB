@@ -2,20 +2,6 @@ const gymService = require('../services/gymService');
 const Player = require('../models/Player'); 
 const { GYMS, getGymById } = require('../config/gym');
 
-// Helper: build player by id or userId
-async function findPlayerByIdOrUser({ id, userId }){
-  let player = null;
-  if (typeof id !== 'undefined' && id !== null) {
-    const idNum = Number(id);
-    if (!Number.isNaN(idNum)) {
-      player = await Player.findOne({ id: idNum });
-    }
-  }
-  if (!player && userId) {
-    player = await Player.findOne({ user: userId });
-  }
-  return player;
-}
 
 // Helper: get selected gym for player
 function getSelectedGymFor(player){
@@ -33,11 +19,11 @@ function gymTrainsStat(gym, statType){
 
 const calculateStatGain = async (req, res) => {
   try {
-    const { userId, id, statType, energyPerTrain: energyPerTrainRaw } = req.body;
+    const userId = req.authUserId;
+    const { statType, energyPerTrain: energyPerTrainRaw } = req.body;
 
-    // New flow: compute from player's selected gym
-    if (userId || typeof id !== 'undefined'){
-      const player = await findPlayerByIdOrUser({ id, userId });
+    if (userId){
+      const player = await Player.findOne({ user: userId });
       if (!player) return res.status(404).json({ error: 'Player not found' });
       const gym = getSelectedGymFor(player);
       if (!gymTrainsStat(gym, statType)) {
@@ -79,9 +65,10 @@ const calculateStatGain = async (req, res) => {
 
 const trainPlayer = async (req, res) => {
   try {
-    const { id, userId, statType, energyPerTrain: energyPerTrainRaw } = req.body;
+    const userId = req.authUserId;
+    const { statType, energyPerTrain: energyPerTrainRaw } = req.body;
 
-    const player = await findPlayerByIdOrUser({ id, userId });
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
 
     const gym = getSelectedGymFor(player);
@@ -136,18 +123,10 @@ const trainPlayer = async (req, res) => {
 
 const addStats = async (req, res) => {
   try {
-    const { id, userId, statType, amount } = req.body;
+    const userId = req.authUserId;
+    const { statType, amount } = req.body;
 
-    let player = null;
-    if (typeof id !== 'undefined' && id !== null) {
-      const idNum = Number(id);
-      if (!Number.isNaN(idNum)) {
-        player = await Player.findOne({ id: idNum });
-      }
-    }
-    if (!player && userId) {
-      player = await Player.findOne({ user: userId });
-    }
+    const player = await Player.findOne({ user: userId });
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
@@ -170,18 +149,10 @@ const addStats = async (req, res) => {
 
 const removeStats = async (req, res) => {
   try {
-    const { id, userId, statType, amount } = req.body;
+    const userId = req.authUserId;
+    const { statType, amount } = req.body;
 
-    let player = null;
-    if (typeof id !== 'undefined' && id !== null) {
-      const idNum = Number(id);
-      if (!Number.isNaN(idNum)) {
-        player = await Player.findOne({ id: idNum });
-      }
-    }
-    if (!player && userId) {
-      player = await Player.findOne({ user: userId });
-    }
+    const player = await Player.findOne({ user: userId });
     if (!player) {
       return res.status(404).json({ error: 'Player not found' });
     }
@@ -206,8 +177,8 @@ module.exports = { calculateStatGain, trainPlayer, addStats, removeStats };
 
 const getCatalog = async (req, res) => {
   try {
-    const { userId, id } = req.query;
-    const player = await findPlayerByIdOrUser({ id, userId });
+    const userId = req.authUserId;
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     const unlocked = (player.gym?.unlocked || [1]).map(Number);
     const selectedGymId = Number(player.gym?.selectedGymId || 1);
@@ -243,8 +214,9 @@ const getCatalog = async (req, res) => {
 
 const unlockGym = async (req, res) => {
   try {
-    const { userId, id, gymId } = req.body;
-    const player = await findPlayerByIdOrUser({ id, userId });
+    const userId = req.authUserId;
+    const { gymId } = req.body;
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     const gym = getGymById(gymId);
     if (!gym) return res.status(400).json({ error: 'Invalid gym id' });
@@ -262,6 +234,7 @@ const unlockGym = async (req, res) => {
   // Money gate
   if (player.money < gym.unlockCost) return res.status(400).json({ error: 'Not enough money' });
     // Deduct and unlock
+    player.$locals._txMeta = { type: 'gym', description: `Unlocked gym: ${gym.name || 'Gym #' + gym.id}` };
     player.money -= gym.unlockCost;
     unlocked.add(gym.id);
     player.gym = player.gym || {};
@@ -277,8 +250,9 @@ const unlockGym = async (req, res) => {
 
 const selectGym = async (req, res) => {
   try {
-    const { userId, id, gymId } = req.body;
-    const player = await findPlayerByIdOrUser({ id, userId });
+    const userId = req.authUserId;
+    const { gymId } = req.body;
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     const gym = getGymById(gymId);
     if (!gym) return res.status(400).json({ error: 'Invalid gym id' });

@@ -31,7 +31,7 @@
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 2px;
   padding: 12px;
 }
 .info-box__header {
@@ -43,10 +43,10 @@
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border);
 }
-.info-box__title h3 { margin: 0; font-size: 16px; }
+.info-box__title h3 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
 .info-box__actions :deep(button),
 .info-box__actions :deep(a) {
-  font-size: 12px;
+  font-size: 11px;
 }
-.info-box__content p { margin: 4px 0; }
+.info-box__content p { margin: 4px 0; font-size: 12px; }
 </style>

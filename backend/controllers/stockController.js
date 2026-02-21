@@ -19,7 +19,7 @@ async function quote(req, res) {
 
 async function portfolio(req, res) {
   try {
-    const { userId } = req.params;
+    const userId = req.authUserId;
     const player = await Player.findOne({ user: userId }).lean();
     if (!player) return res.status(404).json({ error: 'Player not found' });
     const holdings = player.portfolio || [];
@@ -35,7 +35,8 @@ async function portfolio(req, res) {
 
 async function buy(req, res) {
   try {
-    const { userId, symbol, shares } = req.body;
+    const userId = req.authUserId;
+    const { symbol, shares } = req.body;
     const qty = Math.max(1, Number(shares || 0));
     const sym = (symbol || '').toUpperCase();
     if (!stocksCfg[sym]) return res.status(400).json({ error: 'Unknown symbol' });
@@ -44,6 +45,7 @@ async function buy(req, res) {
     const last = await getLatestPrice(sym);
     const cost = Number((qty * last.price).toFixed(2));
     if ((player.money || 0) < cost) return res.status(400).json({ error: 'Not enough money' });
+    player.$locals._txMeta = { type: 'stock_buy', description: `Bought ${qty} ${sym} shares` };
     player.money = Number((player.money - cost).toFixed(2));
     const idx = (player.portfolio || []).findIndex(h => h.symbol === sym);
     if (idx >= 0) {
@@ -61,7 +63,8 @@ async function buy(req, res) {
 
 async function sell(req, res) {
   try {
-    const { userId, symbol, shares } = req.body;
+    const userId = req.authUserId;
+    const { symbol, shares } = req.body;
     const qty = Math.max(1, Number(shares || 0));
     const sym = (symbol || '').toUpperCase();
     const player = await Player.findOne({ user: userId });
@@ -74,6 +77,7 @@ async function sell(req, res) {
     const proceeds = Number((qty * last.price).toFixed(2));
     h.shares = Number((h.shares - qty).toFixed(8));
     if (h.shares <= 0) player.portfolio.splice(idx, 1);
+    player.$locals._txMeta = { type: 'stock_sell', description: `Sold ${qty} ${sym} shares` };
     player.money = Number(((player.money || 0) + proceeds).toFixed(2));
     await player.save();
     return res.json({ money: player.money, proceeds, remaining: h.shares || 0 });

@@ -1,0 +1,291 @@
+[
+  {
+    "_id": "69035fb0b8391352dc2f1980",
+    "name": "Xanax",
+    "id": "1",
+    "type": "drugs",
+    "description": "The Xanax.",
+    "effect": {
+      "energy": 250,
+      "cooldownSeconds": 21600
+    },
+    "overdoseEffect": {
+      "happy": -1000
+    },
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 820000,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "690360cdd8b13de022df511f",
+    "name": "Alizia's Pawn print",
+    "id": "2340294924924",
+    "type": "collectibles",
+    "description": "The best of Dogs. ",
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 9999999999,
+    "sellable": true,
+    "usable": false
+  },
+  {
+    "_id": "69036509267169f40dbed5c3",
+    "name": "Bat",
+    "id": "2",
+    "type": "weapon",
+    "type2": "meleeWeapon",
+    "description": "Smack!",
+    "damage": 10,
+    "armor": 0,
+    "quality": 1,
+    "coverage": 100,
+    "price": 250,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "690547eaf6eab9e48ac43a25",
+    "name": "Ecstatcy",
+    "id": "11",
+    "type": "drugs",
+    "description": "That's right, it's the happy, happy, joy, joy, song. Happy, happy, joy, joy. Happy, happy, joy, joy. Happy, happy, joy, joy. Happy, happy, joy, joy. Happy, happy, joy, joy. Happy, happy, joy, joy. Happy, happy, joy, joy, joy.",
+    "effect": {
+      "happy": 2500,
+      "addiction": 2,
+      "cooldownSeconds": 12000
+    },
+    "overdoseEffect": {
+      "happy": -2500
+    },
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 40000,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "6905481cf6eab9e48ac43a28",
+    "name": "Glock 15",
+    "id": "3",
+    "type": "weapon",
+    "type2": "secondaryWeapon",
+    "description": "Mess with the cock, you get the glock!",
+    "damage": 24,
+    "armor": 0,
+    "quality": 1,
+    "coverage": 100,
+    "price": 13000,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "6905e4df2b96bb32e560c248",
+    "name": "Beer",
+    "id": "41",
+    "type": "alchool",
+    "description": "The best drink known to man.",
+    "effect": {
+      "nerve": 1,
+      "cooldowns": {
+        "alcohol": 3600
+      }
+    },
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 100,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "69065c98e208351fae30dc86",
+    "name": "Gin",
+    "id": "42",
+    "type": "alchool",
+    "description": "Sippin on Gin, only gin.",
+    "effect": {
+      "nerve": 2,
+      "cooldowns": {
+        "alcohol": 3600
+      }
+    },
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 800,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "69065fa00df51fa25632bc67",
+    "name": "Credit Card",
+    "id": "5",
+    "type": "tools",
+    "description": "A credit card.",
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 100,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "69065fb30df51fa25632c849",
+    "name": "Receipt",
+    "id": "51",
+    "type": "tools",
+    "description": "A credit card.",
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 10,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "69065fc70df51fa2563562f4",
+    "name": "Subway pass",
+    "id": "52",
+    "type": "tools",
+    "description": "A subway pass",
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 10,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "69065fe80df51fa25635b401",
+    "name": "Foreign coins",
+    "id": "53",
+    "type": "tools",
+    "description": "Some foreign coins, probably not worth anything.",
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 100,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "690660810df51fa25635ee22",
+    "name": "Wallet",
+    "id": "6",
+    "type": "cache",
+    "description": "A wallet?",
+    "effect": {
+      "cache": {
+        "money": {
+          "min": 20,
+          "max": 910
+        },
+        "moneyChance": 0.99,
+        "items": [
+          {
+            "id": "51",
+            "minQty": 1,
+            "maxQty": 1,
+            "chance": 0.2
+          },
+          {
+            "id": "52",
+            "minQty": 1,
+            "maxQty": 1,
+            "chance": 0.02
+          },
+          {
+            "id": "53",
+            "minQty": 1,
+            "maxQty": 10,
+            "chance": 0.1
+          },
+          {
+            "id": "5",
+            "minQty": 1,
+            "maxQty": 3,
+            "chance": 0.6
+          },
+          {
+            "id": "11",
+            "minQty": 1,
+            "maxQty": 1,
+            "chance": 0.1
+          }
+        ]
+      }
+    },
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 100,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "690661170df51fa2563895f7",
+    "name": "PLACEHOLDER_ITEM",
+    "id": "0",
+    "type": "tools",
+    "description": "PLACEHOLDER_ITEM",
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 0,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "69066c2f710b8871f81f431c",
+    "name": "Donator Pack",
+    "id": "61",
+    "type": "cache",
+    "description": "Donator Pack",
+    "effect": {
+      "cache": {
+        "points": {
+          "min": 50,
+          "max": 50
+        },
+        "pointsChance": 1
+      }
+    },
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 28000000,
+    "sellable": true,
+    "usable": true
+  },
+  {
+    "_id": "690671f7205756ef6138647e",
+    "name": "Schrute Buck",
+    "id": "1201975",
+    "type": "collectibles",
+    "description": "A Schrute Buck and a Stanley Nickel,  yeah, that’s about as even as unicorns and leprechauns.",
+    "damage": 0,
+    "armor": 0,
+    "quality": 0,
+    "coverage": 100,
+    "price": 502,
+    "sellable": true,
+    "usable": true
+  }
+]

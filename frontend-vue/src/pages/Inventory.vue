@@ -42,10 +42,8 @@
 
         </div>
       </div>
-      <div v-if="!error && filtered.length === 0" class="empty muted">No items here</div>
+      <div v-if="filtered.length === 0" class="empty muted">No items here</div>
     </div>
-
-    <div v-if="error" class="error u-mt-6">{{ error }}</div>
   </section>
   
 </template>
@@ -53,14 +51,15 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import api from '../api/client'
-import { usePlayerStore } from '../stores/player'
+import { usePlayer } from '../composables/usePlayer'
+import { useToast } from '../composables/useToast'
 
-const store = usePlayerStore()
+const { store, ensurePlayer, reloadPlayer } = usePlayer()
+const toast = useToast()
 
 const inv = ref([])
 const loading = ref(false)
 const busy = ref(false)
-const error = ref('')
 const q = ref('')
 const activeTab = ref('all')
 
@@ -124,44 +123,26 @@ const filtered = computed(() => {
 async function loadInventory(){
   if (!store.player?.user) return
   loading.value = true
-  error.value = ''
   try {
-    const { data } = await api.get(`/inventory/${store.player.user}`)
+    const { data } = await api.get('/inventory/mine')
     inv.value = data?.inventory || []
   } catch (e) {
-    error.value = e?.response?.data?.error || e?.message || 'Failed to load inventory'
-  } finally {
-    loading.value = false
-  }
-}
-
-async function ensurePlayer(){
-  if (store.player?.user) return
-  try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('nc_user') : null
-    if (raw) {
-      let uid = raw
-      try { const obj = JSON.parse(raw); uid = obj?._id || obj?.id || raw } catch {}
-      await store.loadByUser(uid)
-    }
-  } catch {}
+    toast.error(e?.response?.data?.error || e?.message || 'Failed to load inventory')
+  } finally { loading.value = false }
 }
 
 async function useOne(entry){
   if (!store.player?.user) return
   busy.value = true
-  error.value = ''
   try {
     const itemId = entry?.item?._id || entry?.item?.id
-    await api.post('/inventory/use', { userId: store.player.user, itemId, qty: 1 })
-    // Refresh inventory and player (stats may change)
+    await api.post('/inventory/use', { itemId, qty: 1 })
     await loadInventory()
-    await store.loadByUser(store.player.user)
+    await reloadPlayer()
+    toast.ok('Item used.')
   } catch (e) {
-    error.value = e?.response?.data?.error || e?.message || 'Failed to use item'
-  } finally {
-    busy.value = false
-  }
+    toast.error(e?.response?.data?.error || e?.message || 'Failed to use item')
+  } finally { busy.value = false }
 }
 
 onMounted(async () => { await ensurePlayer(); await loadInventory() })
@@ -178,27 +159,15 @@ function cooldownHours(item){
 </script>
 
 <style scoped>
-.toolbar { display: flex; align-items: center; gap: 12px; }
+.toolbar { display: flex; align-items: center; gap: 10px; }
 .spacer { flex: 1; }
-.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
-.tab { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.03); cursor: pointer; color: var(--text, #e8eaf6); }
-.tab--active { background: #263b2a; color: #a3d977; border-color: #335a3b; }
-.count { margin-left: 6px; opacity: 0.8; font-size: 0.85em; }
-.search { border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.02); padding: 6px 10px; border-radius: 8px; min-width: 180px; }
-
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-.card { border: 1px solid var(--border, #2b2f38); border-radius: 10px; background: var(--panel, #171a2b); padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.search { border: 1px solid var(--border); background: var(--input-bg); padding: 5px 8px; border-radius: 2px; min-width: 160px; font-size: 12px; color: var(--text); }
+.count { margin-left: 4px; opacity: 0.7; font-size: 10px; }
 .card__head { display: flex; justify-content: space-between; align-items: baseline; }
-.item-name { font-weight: 600; color: var(--text, #e8eaf6); }
-.qty { color: var(--text, #e8eaf6); opacity: 0.85; }
-.item-type { font-size: 0.85rem; color: var(--text, #e8eaf6); opacity: 0.8; }
-.desc { font-size: 0.95rem; color: var(--text, #e8eaf6); opacity: 0.95; }
-.cooldown { font-size: 0.9rem; color: var(--text, #e8eaf6); opacity: 0.9; }
-.card__actions { display: flex; gap: 8px; margin-top: 6px; }
-.btn { border: 1px solid var(--border, #2b2f38); background: rgba(255,255,255,0.06); padding: 6px 10px; border-radius: 8px; cursor: pointer; color: var(--text, #e8eaf6); }
-.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
-.btn--primary { background: #335a3b; color: #a3d977; border-color: #335a3b; }
-
-.error { color: #ff7b7b; }
-.empty { grid-column: 1 / -1; padding: 12px; }
+.item-name { font-weight: 600; font-size: 12px; }
+.qty { font-size: 12px; opacity: 0.8; }
+.item-type { font-size: 11px; color: var(--muted); }
+.desc { font-size: 12px; }
+.cooldown { font-size: 11px; color: var(--warn); }
+.card__actions { display: flex; gap: 6px; margin-top: 4px; }
 </style>

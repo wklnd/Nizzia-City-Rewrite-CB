@@ -1,5 +1,4 @@
 // Property catalog and upgrades
-// Simple, extensible structure:
 // - market: set to false to hide from the public real estate market (still usable if owned/admin-granted)
 // - upgradeLimits: id -> max level allowed for this property
 //   Capacity is derived as the sum of all limits; no separate upgradeCapacity field needed
@@ -19,7 +18,7 @@ const PROPERTIES = {
     cost: 250000,
     upkeep: 2500,
     baseHappyMax: 200,
-    upgradeLimits: { hot_tub: 1, home_theater: 1, garden: 1 },
+    upgradeLimits: { hot_tub: 1, home_theater: 1, balcony_garden: 1 },
   },
   house: {
     id: 'house',
@@ -102,6 +101,12 @@ const UPGRADES = {
     name: 'Zen Garden',
     cost: (level) => 150000 * level,
     bonus: (level) => ({ happyMax: 15 * level }),
+  },
+  balcony_garden: {
+    id: 'balcony_garden',
+    name: 'Balcony Garden',
+    cost: (level) => 200000 * level,
+    bonus: (level) => ({ happyMax: 16 * level }),
   },
   vault: {
     id: 'vault',

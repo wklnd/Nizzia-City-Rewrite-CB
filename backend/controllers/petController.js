@@ -3,9 +3,19 @@ const Player = require('../models/Player');
 const petService = require('../services/petService');
 const propertyService = require('../services/propertyService');
 
-function resolvePlayerByAny(req){
-  const { userId } = Object.assign({}, req.query, req.body);
-  return userId;
+// Public: view any player's pet by numeric player id
+async function getByPlayerId(req, res){
+  try {
+    const pid = Number(req.params.id);
+    if (!Number.isFinite(pid)) return res.status(400).json({ error: 'Invalid player id' });
+    const player = await Player.findOne({ id: pid }).select('user').lean();
+    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const pet = await Pets.findOne({ ownerId: player.user }).lean();
+    if (!pet) return res.json({ pet: null });
+    res.json({ pet: { id: String(pet._id), type: pet.type, name: pet.name, age: pet.age, happyBonus: pet.happyBonus } });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
 }
 
 async function catalog(req, res){
@@ -20,11 +30,8 @@ async function catalog(req, res){
 
 async function mine(req, res){
   try {
-    const userId = resolvePlayerByAny(req);
-    if (!userId) return res.status(400).json({ error: 'userId is required' });
-    let player = null; const n = Number(userId);
-    if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-    if (!player) player = await Player.findOne({ user: userId });
+    const userId = req.authUserId;
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     const pet = await Pets.findOne({ ownerId: player.user }).lean();
     if (!pet) return res.json({ pet: null });
@@ -43,11 +50,10 @@ async function mine(req, res){
 
 async function buy(req, res){
   try {
-    const { userId, type, name } = req.body || {};
-    if (!userId || !type) return res.status(400).json({ error: 'userId and type are required' });
-    let player = null; const n = Number(userId);
-    if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-    if (!player) player = await Player.findOne({ user: userId });
+    const userId = req.authUserId;
+    const { type, name } = req.body || {};
+    if (!type) return res.status(400).json({ error: 'type is required' });
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
 
     // Enforce one per player
@@ -61,6 +67,7 @@ async function buy(req, res){
     if (Number(player.money || 0) < cost) return res.status(400).json({ error: 'Not enough money' });
 
     // Deduct and create pet
+    player.$locals._txMeta = { type: 'purchase', description: `Bought pet: ${def.name}` };
     player.money = Number(player.money || 0) - cost;
     await player.save();
 
@@ -118,11 +125,8 @@ async function buy(req, res){
 
 async function releasePet(req, res){
   try {
-    const { userId } = req.body || {};
-    if (!userId) return res.status(400).json({ error: 'userId is required' });
-    let player = null; const n = Number(userId);
-    if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-    if (!player) player = await Player.findOne({ user: userId });
+    const userId = req.authUserId;
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
     const pet = await Pets.findOne({ ownerId: player.user });
     if (!pet) return res.status(404).json({ error: 'No pet to release' });
@@ -133,20 +137,19 @@ async function releasePet(req, res){
   }
 }
 
-module.exports = { catalog, mine, buy, releasePet };
+module.exports = { catalog, mine, buy, releasePet, getByPlayerId };
  
 // Rename a pet (set nickname)
 async function rename(req, res){
   try {
-    const { userId, name } = req.body || {};
-    if (!userId || !name) return res.status(400).json({ error: 'userId and name are required' });
+    const userId = req.authUserId;
+    const { name } = req.body || {};
+    if (!name) return res.status(400).json({ error: 'name is required' });
     // Basic validation
     const trimmed = String(name).trim();
     if (trimmed.length < 2 || trimmed.length > 32) return res.status(400).json({ error: 'Name must be 2-32 characters' });
 
-    let player = null; const n = Number(userId);
-    if (!Number.isNaN(n)) player = await Player.findOne({ id: n });
-    if (!player) player = await Player.findOne({ user: userId });
+    const player = await Player.findOne({ user: userId });
     if (!player) return res.status(404).json({ error: 'Player not found' });
 
     const pet = await Pets.findOne({ ownerId: player.user });

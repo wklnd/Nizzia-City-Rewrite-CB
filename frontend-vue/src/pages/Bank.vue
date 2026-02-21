@@ -24,7 +24,7 @@
           <div class="field">
             <label>Amount ($)</label>
             <input type="number" v-model.number="amount" min="1" step="1"/>
-            <div class="hint">Cash: ${{ fmt(store.player?.money) }}</div>
+            <div class="hint">Cash: {{ fmtMoney(store.player?.money) }}</div>
           </div>
           <div class="field">
             <label>Period</label>
@@ -32,9 +32,7 @@
               <option v-for="(val, key) in rates" :key="key" :value="key">{{ label(key) }} — {{ (val*100).toFixed(2) }}% APR</option>
             </select>
           </div>
-          <button :disabled="busy || !canDeposit" @click="makeDeposit">Deposit</button>
-          <div class="error" v-if="error">{{ error }}</div>
-          <div class="ok" v-if="okMsg">{{ okMsg }}</div>
+          <button class="btn--primary" :disabled="busy || !canDeposit" @click="makeDeposit">Deposit</button>
         </template>
       </div>
     </div>
@@ -73,9 +71,13 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import api from '../api/client'
-import { usePlayerStore } from '../stores/player'
+import { usePlayer } from '../composables/usePlayer'
+import { useToast } from '../composables/useToast'
+import { fmt, fmtMoney, fmtDate } from '../utils/format'
 
-const store = usePlayerStore()
+const { store, ensurePlayer, reloadPlayer } = usePlayer()
+const toast = useToast()
+
 const rates = ref({})
 const updatedAt = ref(null)
 const ratesLoading = ref(true)
@@ -84,12 +86,9 @@ const accounts = ref([])
 const amount = ref(0)
 const period = ref('1w')
 const busy = ref(false)
-const error = ref('')
-const okMsg = ref('')
 
 const label = (key) => ({ '1w': '1 Week', '2w': '2 Weeks', '1m': '1 Month', '3m': '3 Months', '6m': '6 Months' }[key] || key)
-const fmt = (n) => Number(n || 0).toLocaleString()
-const date = (d) => new Date(d).toLocaleString()
+const date = (d) => fmtDate(d)
 
 const canDeposit = computed(() => {
   const money = Number(store.player?.money || 0)
@@ -99,63 +98,47 @@ const canDeposit = computed(() => {
 
 function matured(a) { return new Date(a.endDate).getTime() <= Date.now() }
 
-async function ensurePlayer(){
-  if (store.player?.user) return
-  try {
-    const cached = JSON.parse(localStorage.getItem('nc_player')||'null')
-    if (cached?.user) { store.setPlayer(cached); return }
-  } catch {}
-  try {
-    const u = JSON.parse(localStorage.getItem('nc_user')||'null')
-    const uid = u?._id ?? u?.id
-    if (uid) await store.loadByUser(uid)
-  } catch {}
-}
-
-async function loadRates(){
+async function loadRates() {
   ratesLoading.value = true
   try {
     const { data } = await api.get('/bank/rates')
     rates.value = data?.rates || {}
     updatedAt.value = data?.updatedAt || null
     if (rates.value['1w']) period.value = '1w'
-  } catch (e) {
-    // fallback defaults if API missing
+  } catch {
     rates.value = { '1w': 0.04, '2w': 0.06, '1m': 0.10, '3m': 0.14, '6m': 0.18 }
   } finally { ratesLoading.value = false }
 }
 
-async function loadAccounts(){
+async function loadAccounts() {
   acctsLoading.value = true
   try {
-    if (!store.player?.user) return
-    const { data } = await api.get(`/bank/accounts/${store.player.user}`)
+    const { data } = await api.get('/bank/accounts')
     accounts.value = data?.accounts || []
-  } catch {
-    accounts.value = []
-  } finally { acctsLoading.value = false }
+  } catch { accounts.value = [] }
+  finally { acctsLoading.value = false }
 }
 
-async function makeDeposit(){
+async function makeDeposit() {
   if (!canDeposit.value) return
-  busy.value = true; error.value = ''; okMsg.value = ''
+  busy.value = true
   try {
-    const { data } = await api.post('/bank/deposit', { userId: store.player.user, amount: Math.floor(Number(amount.value||0)), period: period.value })
-    okMsg.value = 'Deposit created successfully.'
-    await store.loadByUser(store.player.user)
+    const { data } = await api.post('/bank/deposit', { amount: Math.floor(Number(amount.value || 0)), period: period.value })
+    toast.ok('Deposit created successfully')
+    store.mergePartial({ money: data.money })
     await loadAccounts()
-  } catch (e) { error.value = e?.response?.data?.error || e?.message || 'Failed to deposit' }
+  } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Failed to deposit') }
   finally { busy.value = false }
 }
 
-async function withdraw(a){
-  busy.value = true; error.value = ''; okMsg.value = ''
+async function withdraw(a) {
+  busy.value = true
   try {
-    const { data } = await api.post('/bank/withdraw', { userId: store.player.user, accountId: a._id })
-    okMsg.value = `Withdrawn $${fmt(data?.payout?.total)} (principal $${fmt(data?.payout?.principal)}, interest $${fmt(data?.payout?.interest)})`
-    await store.loadByUser(store.player.user)
+    const { data } = await api.post('/bank/withdraw', { accountId: a._id })
+    toast.ok(`Withdrawn ${fmtMoney(data?.payout?.total)} (interest ${fmtMoney(data?.payout?.interest)})`)
+    store.mergePartial({ money: data.money })
     await loadAccounts()
-  } catch (e) { error.value = e?.response?.data?.error || e?.message || 'Failed to withdraw' }
+  } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Failed to withdraw') }
   finally { busy.value = false }
 }
 
@@ -163,25 +146,14 @@ onMounted(async () => { await ensurePlayer(); await loadRates(); await loadAccou
 </script>
 
 <style scoped>
-.bank { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; color: var(--text); }
-.rates { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
-.rate { display:flex; justify-content: space-between; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 8px; }
+.bank { max-width: 900px; margin: 0 auto; }
+.rates { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 6px; }
+.rate { display: flex; justify-content: space-between; padding: 6px 8px; border: 1px dashed var(--border); border-radius: 2px; font-size: 12px; }
 .rate__period { font-weight: 600; }
 .rate__apr { color: var(--muted); }
-.field { display:flex; flex-direction: column; gap:6px; margin-bottom: 10px; }
-label { font-size: 12px; color: var(--muted); }
-input, select { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
-.hint { font-size: 12px; color: var(--muted); }
-.list { display: flex; flex-direction: column; gap: 10px; }
-.acct { border: 1px dashed var(--border); border-radius: 8px; padding: 10px; }
-.acct__row { display:flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.acct { border: 1px dashed var(--border); border-radius: 2px; padding: 8px; }
+.acct__row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; font-size: 12px; }
 .acct__title { font-weight: 600; }
-.acct__apr { color: var(--muted); }
-.muted { color: var(--muted); font-size: 12px; }
-.error { color: #ff5f73; margin-top: 8px; }
-.ok { color: #5fff9a; margin-top: 8px; }
-button { padding: 8px 12px; background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
-button:disabled { opacity: 0.6; cursor: not-allowed }
+.acct__apr { color: var(--muted); font-size: 11px; }
 </style>

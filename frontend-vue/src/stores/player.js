@@ -12,30 +12,19 @@ export const usePlayerStore = defineStore('player', {
       this.player = p
       try { localStorage.setItem('nc_player', JSON.stringify(p)) } catch {}
     },
-    async loadByUser(userInput) {
-      if (!userInput) return null
+    /** Patch specific fields without a full reload (for snappy post-action updates) */
+    mergePartial(data) {
+      if (!this.player || !data) return
+      for (const key of Object.keys(data)) {
+        this.player[key] = data[key]
+      }
+      try { localStorage.setItem('nc_player', JSON.stringify(this.player)) } catch {}
+    },
+    async loadByUser() {
       this.loading = true
       this.error = ''
       try {
-        // Support a variety of inputs: raw ObjectId string, numeric id, JSON string, or object
-        const extractUserId = (u) => {
-          if (!u) return null
-          if (typeof u === 'string') {
-            // Try JSON -> object
-            try {
-              const obj = JSON.parse(u)
-              if (obj && (obj._id || obj.id)) return obj._id || obj.id
-            } catch {}
-            return u
-          }
-          if (typeof u === 'object') {
-            return u._id || u.id || null
-          }
-          return String(u)
-        }
-        const uid = extractUserId(userInput)
-        if (!uid) throw new Error('Invalid user identifier')
-        const res = await api.get(`/player/by-user/${uid}`)
+        const res = await api.get('/player/me')
         const p = res.data || res
         this.setPlayer(p)
         return p

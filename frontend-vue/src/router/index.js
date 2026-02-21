@@ -7,6 +7,7 @@ const Inventory = () => import('../pages/Inventory.vue')
 const Money = () => import('../pages/Money.vue')
 const Casino = () => import('../pages/Casino.vue')
 const Job = () => import('../pages/Job.vue')
+const Education = () => import('../pages/Education.vue')
 const Stocks = () => import('../pages/Stocks.vue')
 const Crimes = () => import('../pages/Crimes.vue')
 const CrimeSearchForCash = () => import('../pages/crime/SearchForCash.vue')
@@ -18,6 +19,8 @@ const RealEstate = () => import('../pages/RealEstate.vue')
 const Pets = () => import('../pages/Pets.vue')
 const Market = () => import('../pages/Market.vue')
 const Vault = () => import('../pages/Vault.vue')
+const Grow = () => import('../pages/Grow.vue')
+const Cartel = () => import('../pages/Cartel.vue')
 const Admin = () => import('../pages/Admin.vue')
 const News = () => import('../pages/News.vue')
 const Rules = () => import('../pages/Rules.vue')
@@ -41,6 +44,7 @@ const routes = [
   { path: '/money', name: 'money', component: Money },
   { path: '/casino', name: 'casino', component: Casino },
   { path: '/job', name: 'job', component: Job },
+  { path: '/education', name: 'education', component: Education },
   { path: '/stocks', name: 'stocks', component: Stocks },
   { path: '/crimes', name: 'crimes', component: Crimes },
   { path: '/crimes/search-for-cash', name: 'crime-search-for-cash', component: CrimeSearchForCash },
@@ -53,10 +57,12 @@ const routes = [
   { path: '/pets', name: 'pets', component: Pets },
   { path: '/market', name: 'market', component: Market },
   { path: '/vault', name: 'vault', component: Vault },
+  { path: '/grow', name: 'grow', component: Grow },
+  { path: '/cartel', name: 'cartel', component: Cartel },
   { path: '/admin', name: 'admin', component: Admin },
   { path: '/news', name: 'news', component: News },
-
-
+  { path: '/rules', name: 'rules', component: Rules },
+  { path: '/credits', name: 'credits', component: Credits },
 ]
 
 const router = createRouter({

@@ -1,12 +1,13 @@
+/* ═══════════════════════════════════════════════════
+   CITY MAP — Terminal style
+   ═══════════════════════════════════════════════════ */
 .city__wrap { margin-top: 12px; }
 .city__map {
   position: relative;
   height: 380px;
-  border-radius: 12px;
-  background:
-    radial-gradient(1200px 400px at 20% 20%, rgba(90,200,250,0.08), transparent 60%),
-    radial-gradient(1000px 600px at 80% 70%, rgba(163,217,119,0.08), transparent 60%),
-    linear-gradient(180deg, #101322, #0b0e19);
+  border-radius: 2px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
   overflow: hidden;
 }
 .poi {
@@ -14,38 +15,50 @@
   transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.04);
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 2px;
+  border: 1px solid var(--border);
+  background: var(--panel);
   color: var(--text);
   cursor: pointer;
-  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
-  backdrop-filter: blur(4px);
+  transition: background 80ms, border-color 80ms;
+  font-size: 12px;
 }
-.poi:hover { transform: translate(-50%, -55%); background: rgba(255,255,255,0.08); box-shadow: 0 6px 16px rgba(0,0,0,0.25); }
-.poi:disabled { opacity: 0.6; cursor: default; }
-.poi__icon { font-size: 18px; }
-.poi__name { font-size: 13px; opacity: 0.95; }
+.poi:hover {
+  background: var(--accent-muted);
+  border-color: var(--accent);
+}
+.poi:disabled { opacity: 0.4; cursor: default; }
+.poi__icon { font-size: 16px; }
+.poi__name { font-size: 12px; }
 .poi__soon {
   font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.12);
-  border: 1px solid rgba(255,255,255,0.15);
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: var(--panel-hover);
+  border: 1px solid var(--border);
+  color: var(--muted);
 }
 
 .city__grid {
-  margin-top: 18px;
+  margin-top: 14px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
 }
-.city__card { padding: 14px; }
-.city__card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.city__card { padding: 12px; }
+.city__card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 
-.city__shops { margin-top: 26px; }
+.city__shops { margin-top: 20px; }
 .city__shops h3 { margin: 0 0 4px 0; }
 
-.btn { padding: 8px 12px; border-radius: 8px; border: 1px solid #3d8b40; background: #4caf50; color: #fff; cursor: pointer; }
+.btn {
+  padding: 6px 12px;
+  border-radius: 2px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}

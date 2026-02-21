@@ -11,6 +11,7 @@ const playerSchema = new mongoose.Schema({
   level: { type: Number, default: 1 }, // Player level
   exp: { type: Number, default: 0 }, // Player experience
   npc : { type: Boolean, default: false }, // Is this player an NPC
+  npcPersonality: { type: String, default: null }, // Personality archetype for NPC behaviour
 
   crimeExp: { type: Number, default: 0 }, // Experience earned from crimes
   crimesCommitted: { type: Number, default: 0 }, // Total crimes committed
@@ -93,9 +94,23 @@ const playerSchema = new mongoose.Schema({
   },
 
   job: {
-    jobId: { type: String, default: null }, 
-    jobRank: { type: Number, default: 0 }, 
-    jobPoints: { type: Number, default: 0 }, 
+    jobId: { type: String, default: null },          // city job id (e.g. 'army') or null
+    jobRank: { type: Number, default: 0 },           // 0-9
+    jobPoints: { type: Number, default: 0 },         // accumulated JP
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', default: null }, // company job
+    lastWorkedAt: { type: Date, default: null },     // cooldown tracker
+    lastQuitAt: { type: Date, default: null },       // quit penalty
+  },
+
+  // Education: completed courses, active enrollment, bachelor degrees
+  education: {
+    completed: [{ type: String }],                   // array of course ids e.g. 'biology_0'
+    bachelors: [{ type: String }],                   // array of category ids e.g. 'biology'
+    active: {
+      courseId: { type: String, default: null },
+      startedAt: { type: Date, default: null },
+      endsAt: { type: Date, default: null },
+    },
   },
   
   // Inventory: list of items with quantities
@@ -150,6 +165,49 @@ const playerSchema = new mongoose.Schema({
   crime: {
     last: { type: Map, of: Date, default: {} }, // key: location id, value: last attempt time
   },
+});
+
+// ── Auto-log every money change as a Transaction ──────────────
+
+// Capture original money when a document loads from the DB
+playerSchema.post('init', function () {
+  this.$locals._originalMoney = this.money;
+});
+
+// After save, create a Transaction record if money changed
+playerSchema.post('save', async function () {
+  // Skip if flagged (moneyService handles its own logging for transfers)
+  if (this.$locals._skipAutoLog) {
+    delete this.$locals._skipAutoLog;
+    this.$locals._originalMoney = this.money;
+    return;
+  }
+
+  const original = this.$locals._originalMoney;
+  if (original === undefined) return; // new doc or not loaded from DB
+  if (this.money === original) return; // no change
+
+  const diff = this.money - original;
+  const meta = this.$locals._txMeta || {};
+
+  try {
+    const Transaction = require('./Transaction');
+    await Transaction.create({
+      player:       this._id,
+      type:         meta.type || 'other',
+      amount:       diff,
+      balanceAfter: this.money,
+      description:  meta.description || '',
+      otherPlayer:  meta.otherPlayer || null,
+      meta:         meta.extra || {},
+    });
+  } catch (_) {
+    // Never let logging error break gameplay
+  }
+
+  // Reset for potential subsequent saves in the same request
+  this.$locals._originalMoney = this.money;
+  delete this.$locals._txMeta;
 });
 
 module.exports = mongoose.model('Player', playerSchema);

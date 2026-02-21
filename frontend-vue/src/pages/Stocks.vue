@@ -63,7 +63,6 @@
           <div class="actions">
             <button class="btn" @click="doBuy" :disabled="!canTrade || busy">{{ busy? 'Busy…' : 'Buy' }}</button>
             <button class="btn" @click="doSell" :disabled="!canTrade || busy">{{ busy? 'Busy…' : 'Sell' }}</button>
-            <span class="msg" :class="{ err: !!error, ok: !!okMsg }">{{ error || okMsg }}</span>
           </div>
           <div class="muted">Money: {{ moneyFmt }}</div>
         </div>
@@ -101,17 +100,15 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '../api/client'
-import { usePlayerStore } from '../stores/player'
+import { usePlayer } from '../composables/usePlayer'
+import { useToast } from '../composables/useToast'
+import { fmtInt, fmtMoney } from '../utils/format'
 
-const store = usePlayerStore()
-const userId = computed(() => {
-  try { return JSON.parse(localStorage.getItem('nc_user')||'null')?._id || null } catch { return null }
-})
+const { store, ensurePlayer, reloadPlayer } = usePlayer()
+const toast = useToast()
 
 const loading = ref(false)
 const busy = ref(false)
-const error = ref('')
-const okMsg = ref('')
 
 const list = ref([])
 const symbol = ref('')
@@ -120,18 +117,16 @@ const range = ref('1d')
 const shares = ref(1)
 
 const portfolio = ref({ money: 0, holdings: [] })
-const moneyFmt = computed(() => `$${Number((portfolio.value.money ?? store.player?.money) || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`)
+const moneyFmt = computed(() => fmtMoney((portfolio.value.money ?? store.player?.money) || 0))
 
 const w = 520, h = 120
-const points = computed(() => (quote.value?.history||[]).map(p => p.price))
+const points = computed(() => (quote.value?.history || []).map(p => p.price))
 const minVal = computed(() => points.value.length ? Math.min(...points.value) : 0)
 const maxVal = computed(() => points.value.length ? Math.max(...points.value) : 0)
 const svgPoints = computed(() => {
   const arr = points.value
   if (!arr.length) return ''
-  const min = Math.min(...arr)
-  const max = Math.max(...arr)
-  const span = max - min || 1
+  const min = Math.min(...arr), max = Math.max(...arr), span = max - min || 1
   return arr.map((v, i) => {
     const x = Math.round((i / Math.max(1, arr.length - 1)) * w)
     const y = Math.round(h - ((v - min) / span) * h)
@@ -139,18 +134,17 @@ const svgPoints = computed(() => {
   }).join(' ')
 })
 
-function fmtInt(n){ return Number(n||0).toLocaleString(undefined, { maximumFractionDigits: 0 }) }
-function fmtPrice(n, decimals=2){
+function fmtPrice(n, decimals = 2) {
   const d = Number.isInteger(decimals) ? decimals : 2
-  const num = Number(n||0).toFixed(d)
+  const num = Number(n || 0).toFixed(d)
   return `$${Number(num).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d })}`
 }
-function plClass(h){
-  const pl = (h.value||0) - (h.shares*h.avgPrice)
-  return { up: pl>0, down: pl<0 }
+function plClass(h) {
+  const pl = (h.value || 0) - (h.shares * h.avgPrice)
+  return { up: pl > 0, down: pl < 0 }
 }
 
-async function loadList(){
+async function loadList() {
   loading.value = true
   try {
     const res = await api.get('/stocks')
@@ -158,85 +152,62 @@ async function loadList(){
     if (!symbol.value && list.value.length) symbol.value = list.value[0].symbol
   } finally { loading.value = false }
 }
-
-async function loadQuote(){
+async function loadQuote() {
   if (!symbol.value) { quote.value = null; return }
-  try {
-    const res = await api.get(`/stocks/${symbol.value}?range=${range.value}`)
-    quote.value = res.data || res
-  } catch { quote.value = null }
+  try { const res = await api.get(`/stocks/${symbol.value}?range=${range.value}`); quote.value = res.data || res }
+  catch { quote.value = null }
 }
-
-async function loadPortfolio(){
+async function loadPortfolio() {
   try {
-    if (!userId.value) return
-    const res = await api.get(`/stocks/portfolio/${userId.value}`)
+    const res = await api.get('/stocks/portfolio')
     portfolio.value = res.data || res
   } catch { portfolio.value = { money: 0, holdings: [] } }
 }
 
-function setRange(r){ range.value = r }
-function select(sym){ symbol.value = sym }
-const canTrade = computed(() => !!(symbol.value && shares.value>0 && userId.value))
+function setRange(r) { range.value = r }
+function select(sym) { symbol.value = sym }
+const canTrade = computed(() => !!(symbol.value && shares.value > 0 && store.player?.user))
 
-async function doBuy(){
+async function doBuy() {
   if (!canTrade.value) return
-  error.value=''; okMsg.value=''; busy.value=true
+  busy.value = true
   try {
-    const res = await api.post('/stocks/buy', { userId: userId.value, symbol: symbol.value, shares: Number(shares.value)||1 })
-    // Refresh both portfolio and global player money
+    const { data } = await api.post('/stocks/buy', { symbol: symbol.value, shares: Number(shares.value) || 1 })
+    store.mergePartial({ money: data.money })
     await loadPortfolio()
-    await store.loadByUser(userId.value)
-    okMsg.value = 'Bought.'
-  } catch(e){ error.value = e?.response?.data?.error || e?.message || 'Buy failed' }
-  finally { busy.value=false }
+    toast.ok('Bought.')
+  } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Buy failed') }
+  finally { busy.value = false }
+}
+async function doSell() {
+  if (!canTrade.value) return
+  busy.value = true
+  try {
+    const { data } = await api.post('/stocks/sell', { symbol: symbol.value, shares: Number(shares.value) || 1 })
+    store.mergePartial({ money: data.money })
+    await loadPortfolio()
+    toast.ok('Sold.')
+  } catch (e) { toast.error(e?.response?.data?.error || e?.message || 'Sell failed') }
+  finally { busy.value = false }
 }
 
-async function doSell(){
-  if (!canTrade.value) return
-  error.value=''; okMsg.value=''; busy.value=true
-  try {
-    const res = await api.post('/stocks/sell', { userId: userId.value, symbol: symbol.value, shares: Number(shares.value)||1 })
-    await loadPortfolio()
-    await store.loadByUser(userId.value)
-    okMsg.value = 'Sold.'
-  } catch(e){ error.value = e?.response?.data?.error || e?.message || 'Sell failed' }
-  finally { busy.value=false }
-}
-
-onMounted(async () => { await loadList(); await loadQuote(); await loadPortfolio() })
-watch(symbol, async () => { await loadQuote() })
-watch(range, async () => { await loadQuote() })
+onMounted(async () => { await ensurePlayer(); await loadList(); await loadQuote(); await loadPortfolio() })
+watch(symbol, () => loadQuote())
+watch(range, () => loadQuote())
 </script>
 
 <style scoped>
-.stocks__grid { display:grid; grid-template-columns: 1.2fr 1.8fr; gap: 12px; }
+.stocks__grid { display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 10px; }
 .stocks__quote { grid-column: 2; }
 .stocks__portfolio { grid-column: 2; }
-.stocks__head { display:flex; align-items:center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
-.table-wrap { width: 100%; overflow: auto; }
-.tbl { width:100%; border-collapse: collapse; font-size: 13px; }
-.tbl th, .tbl td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-.tbl td.num, .tbl th.num { text-align: right; font-feature-settings: 'tnum'; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stocks__head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; }
 .tbl tr { cursor: pointer; }
-.tbl tr.active { background: rgba(90,200,250,0.08); }
-.up { color: #77d37b; }
-.down { color: #ff6b6b; }
-
-.tabs { display:flex; gap: 6px; }
-.tabs button { padding: 6px 10px; border-radius: 8px; border: 1px solid #555; background: #2b2b2b; color:#fff; cursor:pointer; }
-.tabs button.active { border-color: #5ac8fa; background: #233041; }
-.sparkline { height: 140px; display:flex; align-items: center; justify-content: center; }
-.sparkline svg { width: 100%; height: 100%; }
-
-.trade { display:flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.block { display:block; }
-.lbl { display:block; font-size:12px; color: var(--muted); margin-bottom: 4px; }
-input[type="number"] { width: 120px; padding: 8px; border-radius: 6px; border: 1px solid #555; background: #2b2b2b; color: #fff; }
-.actions { display:flex; align-items:center; gap: 10px; }
-.msg { font-size: 12px; }
-.msg.ok { color: #a3d977; }
-.msg.err { color: #ff6b6b; }
-
-@media (max-width: 1200px){ .stocks__grid { grid-template-columns: 1fr; } }
+.tbl tr:hover { background: var(--panel-hover); }
+.tbl tr.active { background: var(--accent-muted); }
+.sparkline__scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 3px; }
+.trade { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.block { display: block; }
+.lbl { display: block; font-size: 11px; color: var(--muted); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+input[type="number"] { width: 100px; }
+@media (max-width: 1200px) { .stocks__grid { grid-template-columns: 1fr; } }
 </style>

@@ -2,6 +2,7 @@
 const cron = require('node-cron');
 const Player = require('../models/Player');
 const propertyService = require('../services/propertyService');
+const ts = () => `[${new Date().toTimeString().slice(0,8)}]`;
 
 function startOfUtcDay(d){
 	const x = new Date(d); x.setUTCHours(0,0,0,0); return x;
@@ -32,7 +33,7 @@ async function accrueUpkeepOnce(){
 		try { player.markModified && player.markModified('properties'); } catch(_) {}
 		try { await player.save(); accrued++; } catch(_) {}
 	}
-	console.log(`[dailyReset] processed=${processed} accrued=${accrued}`);
+	console.log(`${ts()} [dailyReset] processed=${processed} accrued=${accrued}`);
 }
 
 function scheduleDailyReset(){

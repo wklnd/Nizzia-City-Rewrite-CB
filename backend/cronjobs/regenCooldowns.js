@@ -1,6 +1,7 @@
 // regenCooldowns.js
 const Player = require('../models/Player');
 const cron = require('node-cron');
+const ts = () => `[${new Date().toTimeString().slice(0,8)}]`;
 
 async function tickCooldowns(deltaSec = 60) {
   try {
@@ -36,7 +37,7 @@ async function tickCooldowns(deltaSec = 60) {
     if (bulk.length) await Player.bulkWrite(bulk);
 
     const totalMods = (res1.modifiedCount||0) + (res2.modifiedCount||0) + (res3.modifiedCount||0) + (resAlc.modifiedCount||0) + (bulk.length||0);
-    if (totalMods > 0) console.log(`Cooldowns decremented (-${Math.abs(dec)}s) affected docs: ${totalMods}`);
+    if (totalMods > 0) console.log(`${ts()} Cooldowns decremented (-${Math.abs(dec)}s) affected docs: ${totalMods}`);
   } catch (err) {
     console.error('tickCooldowns error:', err);
   }
@@ -45,7 +46,7 @@ async function tickCooldowns(deltaSec = 60) {
 function scheduleRegenCooldowns() {
   // Run every minute
   cron.schedule('*/1 * * * *', () => {
-    console.log('Running cooldowns tick...');
+    console.log(`${ts()} Running cooldowns tick...`);
     try {
       const mongoose = require('mongoose');
       if (mongoose.connection.readyState !== 1) {

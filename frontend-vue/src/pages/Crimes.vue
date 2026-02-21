@@ -28,14 +28,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { usePlayerStore } from '../stores/player'
 
-const store = usePlayerStore()
 const router = useRouter()
-const busy = ref(false)
-function fmt(n){ return Number(n||0).toLocaleString() }
 
 async function openSearchForCash(){
   await router.push({ name: 'crime-search-for-cash' })
@@ -43,15 +38,9 @@ async function openSearchForCash(){
 </script>
 
 <style scoped>
-.crimes { max-width: 800px; margin: 24px auto; padding: 0 16px; }
-.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
-.crime-btn { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 14px 10px; cursor: pointer; text-align: center; }
-.crime-btn:disabled { opacity: .6; cursor: not-allowed }
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; color: var(--text); }
-.row { display:flex; gap: 16px; margin: 8px 0; color: var(--muted) }
-.stat { font-size: 12px; }
-button { padding: 8px 12px; background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px; cursor:pointer }
-button:disabled { opacity: .6; cursor: not-allowed }
-.result { margin-top: 10px; font-size: 14px; }
-.error { color: #ff5f73; }
+.crimes { max-width: 800px; margin: 16px auto; padding: 0 16px; }
+.grid { grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 14px; }
+.crime-btn { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 2px; padding: 10px 8px; cursor: pointer; text-align: center; font-size: 12px; transition: border-color 80ms, background 80ms; }
+.crime-btn:hover { border-color: var(--accent); background: var(--accent-muted); }
+.crime-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
